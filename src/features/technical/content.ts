@@ -34,7 +34,6 @@ export const SECTIONS = [
   { id: "agents", label: "Agent access" },
   { id: "stores", label: "Stores and releases" },
   { id: "risks", label: "Risks and mitigations" },
-  { id: "plan", label: "Phased plan" },
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -662,56 +661,3 @@ export const RISKS = [
   { risk: "Data terms", why: "Some sites limit automated access.", reduce: "Check each source’s terms. Prefer official APIs and bulk files." },
 ];
 
-export interface Phase {
-  phase: string;
-  name: string;
-  scope: string;
-  team: string;
-  time: string;
-  /** Bar on the plan track: relative length, and whether it is open-ended. */
-  span: number;
-  status: "done" | "next" | "later";
-  open?: boolean;
-}
-
-export const PHASES: Phase[] = [
-  { phase: "0", name: "Demo", scope: "The current interactive demo, with fixed data.", team: "Done", time: "Done", span: 1, status: "done" },
-  {
-    phase: "1",
-    name: "Data foundation",
-    scope: "Federal sources: congress.gov, votes, LDA, FEC. Entity resolution for members of Congress and committees. Raw store and one Postgres database.",
-    team: "2 to 3 engineers",
-    time: "About 3 months",
-    span: 3,
-    status: "next",
-  },
-  {
-    phase: "2",
-    name: "First product",
-    scope: "The AI query agent with citations, the graph and dashboard on real data, one tracked topic, watchlists and checkpoints, sign-on. Pilot with 3 to 5 design partners.",
-    team: "3 to 4 engineers, 1 designer",
-    time: "About 3 more months",
-    span: 3,
-    status: "later",
-  },
-  {
-    phase: "3",
-    name: "Coverage",
-    scope: "FARA, travel, financial disclosures, statements. The human review queue. Alerts.",
-    team: "4 to 6 people",
-    time: "Ongoing",
-    span: 4,
-    status: "later",
-    open: true,
-  },
-  {
-    phase: "4",
-    name: "Analysis layers",
-    scope: "Sentiment over time, then prediction. Needs the history from phases 1 to 3.",
-    team: "Adds data science",
-    time: "After phase 3",
-    span: 3,
-    status: "later",
-    open: true,
-  },
-];

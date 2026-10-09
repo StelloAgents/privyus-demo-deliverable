@@ -29,7 +29,6 @@ npm start
 | `/search` | Search |
 | `/login` | Sign-in screen |
 | `/technical` | Technical architecture overview |
-| `/lab` | Alternative graph visual concepts |
 
 Presenter mode walks through the demo story step by step. Start it with the "Present" button in the top bar, or press `P`. In presenter mode, `N` toggles the speaker notes, and `Home` / `End` jump to the first and last step.
 
@@ -38,7 +37,7 @@ Presenter mode walks through the demo story step by step. Start it with the "Pre
 | Folder | Contents |
 |---|---|
 | `src/app/` | Next.js App Router pages |
-| `src/features/` | Screen-level features (dashboard, explore, search, presenter, technical, lab) |
+| `src/features/` | Screen-level features (dashboard, explore, search, presenter, technical) |
 | `src/components/` | Shared UI components |
 | `src/data/` | Demo fixtures and the chat script |
 | `src/lib/` | Store, graph, script, and tour engines |

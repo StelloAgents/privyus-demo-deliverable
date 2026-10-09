@@ -303,6 +303,7 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
   const viewRef = useRef(view);
   const hoverRef = useRef<string | null>(hover);
   hoverRef.current = hover;
+  const hoverLift = useRef<{ id: string | null; lift: boolean; set: boolean }>({ id: null, lift: false, set: false });
   const pressedRef = useRef<string | undefined>(pressed);
   pressedRef.current = pressed;
 
@@ -1385,7 +1386,13 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
         x0 = below.x0;
         y0 = below.y0;
       }
+      // A hover brings forward only a label that was hidden when the hover began. A label
+      // already on screen keeps its spot: moving it out from under the pointer would end
+      // the hover, move it back, and flicker.
+      if (hoverRef.current !== hoverLift.current.id) hoverLift.current = { id: hoverRef.current, lift: false, set: false };
       const hovered = hoverRef.current === n.id;
+      if (hovered && !hoverLift.current.set) hoverLift.current = { id: n.id, lift: label.style.visibility !== "visible", set: true };
+      const lifted = hovered && hoverLift.current.lift;
       const show = label.dataset.show === "1" || hovered;
       if (!show) {
         label.style.visibility = "hidden";
@@ -1393,8 +1400,8 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       }
       const pri =
         // The center label always shows, but places itself after the cards around it.
-        hovered ? 1000 : n.tier === "center" ? 450 : n.tier === "anchor" ? 800 : n.focused ? 780 : n.emphasis ? 750 : n.onPath ? 700 : n.tier === "full" ? 500 - (n.ring ? RING_ORDER.indexOf(n.ring) : 0) - proj.z : 300 - proj.z;
-      items.push({ el: label, pri, x0, y0, x1: x0 + d.w, y1: y0 + d.h, keep: n.tier === "center" || hovered, ring: n.tier === "anchor", alts });
+        lifted ? 1000 : n.tier === "center" ? 450 : n.tier === "anchor" ? 800 : n.focused ? 780 : n.emphasis ? 750 : n.onPath ? 700 : n.tier === "full" ? 500 - (n.ring ? RING_ORDER.indexOf(n.ring) : 0) - proj.z : 300 - proj.z;
+      items.push({ el: label, pri, x0, y0, x1: x0 + d.w, y1: y0 + d.h, keep: n.tier === "center" || lifted, ring: n.tier === "anchor", alts });
     }
 
     for (const e of v.edges) {

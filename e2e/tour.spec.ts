@@ -226,7 +226,6 @@ test("1. forward golden run", async ({ page }) => {
   // The close: one full-screen slide, the progress line full.
   const slide = page.locator("[data-tour-slide]");
   await expect(slide.getByRole("heading", { name: "Thank You" })).toBeVisible();
-  await expect(slide).toContainText("That's the full walkthrough of Privyus.");
   await expect(page.locator("[data-tour-caption]")).toHaveCount(0);
   report(test.info(), "→ key to caption", times);
   test.info().annotations.push({ type: "max curtain opaque", description: `${Math.round(await page.evaluate(() => (window as unknown as { __opaqueMax: number }).__opaqueMax))}ms` });

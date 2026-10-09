@@ -14,10 +14,9 @@ const NAV = [
   { label: "Search", href: "/search", match: (p: string) => p.startsWith("/search") },
   { label: "Explore", href: "/explore", match: (p: string) => p.startsWith("/explore") },
   { label: "Technical", href: "/technical", match: (p: string) => p.startsWith("/technical") },
-  { label: "Alternative Designs", href: "/lab", match: (p: string) => p.startsWith("/lab") },
 ];
 
-/** App shell top bar: wordmark, nav (Home, Search, Explore, Technical, Alternative Designs), Workspace, and the user avatar. */
+/** App shell top bar: wordmark, nav (Home, Search, Explore, Technical), Workspace, and the user avatar. */
 export function TopBar() {
   const pathname = usePathname() ?? "/";
   return (

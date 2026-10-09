@@ -324,9 +324,11 @@ function ClosingSlide({ title, body, index, total, reduced }: { title: string; b
       <h2 className="mt-3 font-display text-[44px] leading-[52px] font-semibold" style={{ color: "var(--tour-caption-title)" }}>
         {title}
       </h2>
-      <p className="text-[18px] leading-[28px]" style={{ color: "var(--tour-caption-text)" }}>
-        {body}
-      </p>
+      {body ? (
+        <p className="text-[18px] leading-[28px]" style={{ color: "var(--tour-caption-text)" }}>
+          {body}
+        </p>
+      ) : null}
     </motion.div>
   );
 }

@@ -3,7 +3,7 @@ import { Crosswalk } from "./Crosswalk";
 import { DataModel } from "./DataModel";
 import { GraphDrawing } from "./GraphDrawing";
 import { QueryTable } from "./QueryTable";
-import { Plan, Risks } from "./RisksAndPlan";
+import { Risks } from "./RisksAndPlan";
 import { ScaleBand } from "./ScaleBand";
 import { Section } from "./Section";
 import { StoresAndRelease } from "./StoresAndRelease";
@@ -137,13 +137,6 @@ export function TechnicalPage() {
           <Risks />
         </Section>
 
-        <Section
-          id="plan"
-          title="Phased Plan"
-          lead="Phase 1 builds the data foundation that every later phase needs. The analysis layers come last, because they need the history that phases 1 to 3 collect."
-        >
-          <Plan />
-        </Section>
       </article>
     </div>
   );

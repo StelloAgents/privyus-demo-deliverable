@@ -297,7 +297,7 @@ export const tourSteps: TourStep<StepState>[] = [
     play: async () => {},
     slide: true,
     title: 'Thank You',
-    body: "That's the full walkthrough of Privyus.",
+    body: "",
     notes: 'The closing slide. Hand over to questions. Press Esc or the X at the top right to leave presenter mode and explore freely.',
   },
 ];
