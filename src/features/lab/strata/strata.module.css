@@ -1,0 +1,296 @@
+/* Strata lab. All colors come from the tokens in src/styles/tokens.css. */
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 640px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---------- HUD ---------- */
+
+.hudTop {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 26px;
+  letter-spacing: -0.005em;
+  color: var(--text-1);
+}
+
+.meta {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.reset {
+  pointer-events: auto;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+.reset:hover {
+  color: var(--text-1);
+  border-color: var(--teal);
+}
+.reset:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+.hudBottom {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.hint {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+}
+
+.trail {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.trailSep {
+  width: 14px;
+  height: 1px;
+  background: var(--border-strong);
+}
+.trailLast {
+  color: var(--orange-ink);
+  font-weight: 500;
+}
+
+/* ---------- Plane labels ---------- */
+
+.planeLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(0, -50%);
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  opacity: 0.8;
+  transition: color 200ms, opacity 200ms;
+}
+.planeLabel::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+}
+.planeLabel[data-active] {
+  color: var(--teal-bright);
+  opacity: 1;
+}
+.planeCount {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+/* ---------- Node cards ---------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate(var(--dx), calc(-50% + 4px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(var(--dx), -50%);
+  }
+}
+
+.card {
+  --dx: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(var(--dx), -50%);
+  padding: 4px 10px 4px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--label-bg);
+  white-space: nowrap;
+  animation: rise 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.card[data-variant="path"] {
+  border-color: rgb(248 155 69 / 0.45);
+}
+
+.card[data-variant="focus"] {
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  border-color: var(--orange);
+  background: var(--surface-1);
+  align-items: flex-start;
+}
+
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--teal);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.card[data-variant="path"] .avatar {
+  border-color: rgb(248 155 69 / 0.7);
+}
+.card[data-variant="focus"] .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+  border-color: var(--orange);
+  box-shadow: var(--focus-glow);
+}
+
+.name {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+.sub {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.card[data-variant="focus"] .name {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.card[data-variant="focus"] .sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+
+.source {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-3);
+}
+.chip {
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--teal);
+  color: var(--teal-bright);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+/* ---------- Edge labels ---------- */
+
+.edgeChip {
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--edge-label-border);
+  background: var(--edge-label-bg);
+  color: var(--edge-label-text);
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+  animation: fade 200ms ease-out both;
+}
+.edgeChip[data-path] {
+  border-color: var(--edge-label-border-path);
+  color: var(--orange-ink);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .edgeChip {
+    animation: fade 120ms linear both;
+  }
+}
+
+/* Declutter: a label that overlaps a more important one fades out (layout stays, so it can come back). */
+.card,
+.edgeChip {
+  transition: opacity 160ms ease-out;
+}
+.planeLabel[data-hidden="true"],
+.card[data-hidden="true"],
+.edgeChip[data-hidden="true"] {
+  opacity: 0 !important;
+  animation: none;
+}

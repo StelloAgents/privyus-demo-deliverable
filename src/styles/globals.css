@@ -1,0 +1,276 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "@xyflow/react/dist/base.css";
+
+/*
+ * Tailwind utilities mapped to the tokens.
+ * Colors:  bg-bg, bg-surface-1..3, border-line, border-line-strong,
+ *          text-fg-1..3, text-teal, text-teal-bright, text-orange, text-live,
+ *          text-lavender, text-up, text-down (and the same names for bg-/border-/stroke-).
+ * Fonts:   font-display (Inter Tight), font-sans (Inter, default).
+ * Radius:  rounded-panel (6), rounded-card (4), rounded-chip (4), rounded-button (4), rounded-overlay (6).
+ * Type:    t-page-title, t-panel-title, t-card-title, t-body, t-meta, t-kpi.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg-1: var(--text-1);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-teal: var(--teal);
+  --color-teal-bright: var(--teal-bright);
+  --color-orange: var(--orange);
+  --color-orange-ink: var(--orange-ink);
+  --color-live: var(--live);
+  --color-lavender: var(--lavender);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-party-r: var(--party-r);
+  --color-party-d: var(--party-d);
+  --color-party-i: var(--party-i);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, sans-serif;
+
+  --radius-panel: 6px;
+  --radius-card: 4px;
+  --radius-chip: 4px;
+  --radius-button: 4px;
+  --radius-overlay: 6px;
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@utility t-page-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 38px;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+}
+@utility t-panel-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 26px;
+  letter-spacing: -0.005em;
+  color: var(--text-1);
+}
+@utility t-card-title {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-1);
+}
+@utility t-body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+}
+@utility t-meta {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+}
+@utility t-kpi {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 28px;
+  line-height: 32px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+}
+
+/* Display type (Inter Tight) runs slightly tight. */
+@utility font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.005em;
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--bg);
+    color: var(--text-1);
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: var(--teal-soft);
+  }
+  /* Focus rings for keyboard users only. The outline follows each element's border radius. */
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--teal-bright);
+    outline-offset: 2px;
+  }
+  /* After a mouse or touch interaction, no ring even when a browser marks focus as visible. */
+  html[data-input="pointer"] :focus-visible {
+    outline: none;
+  }
+  button {
+    cursor: pointer;
+  }
+}
+
+/* ---------- Motion keyframes shared by primitives and the graph ---------- */
+@keyframes privy-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes privy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes privy-edge-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes privy-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes privy-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(var(--drift-x, 6px), var(--drift-y, -5px));
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes privy-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privy-motion-safe {
+    animation: privy-fade-in 180ms ease-out both !important;
+  }
+}
+
+/* ---------- React Flow overrides: the canvas follows the tokens ---------- */
+.privy-graph .react-flow__pane {
+  cursor: grab;
+}
+.privy-graph .react-flow__pane.dragging {
+  cursor: grabbing;
+}
+.privy-graph .react-flow__node {
+  cursor: pointer;
+}
+.privy-graph-static .react-flow__node,
+.privy-graph-static .react-flow__edge {
+  cursor: default;
+  pointer-events: none;
+}
+.privy-graph-static .react-flow__pane {
+  cursor: default;
+}
+.privy-graph .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.privy-graph .react-flow__edge-path {
+  transition:
+    stroke var(--dur-hover) ease,
+    stroke-width var(--dur-hover) ease,
+    opacity var(--dur-dim) ease;
+}
+
+/* Height of the work area: the viewport minus the 16px top gutter, the top bar, the 16px gap, and the footer line. */
+@utility h-workspace {
+  height: calc(100dvh - var(--topbar-height) - 32px - var(--footer-height));
+}
+
+/* Graph context opacity (tokens in tokens.css): dimmed nodes (outside one hop of the focus) and ghost nodes. */
+.privy-dim {
+  opacity: var(--graph-dim-opacity);
+}
+.privy-ghost {
+  opacity: var(--graph-ghost-opacity);
+}
+.privy-dim:hover,
+.privy-ghost:hover {
+  opacity: 0.7;
+}
+
+/* ---------- Theme switch: one page cross-fade (View Transitions), nothing moves ---------- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 250ms;
+  animation-timing-function: ease-out;
+}
+/* While the theme changes, no element transitions on its own (no double animation). */
+html.theme-instant,
+html.theme-instant *,
+html.theme-instant *::before,
+html.theme-instant *::after {
+  transition: none !important;
+}
+
+/* Theme-specific images (the logo). */
+.theme-light-only {
+  display: none;
+}
+:root[data-theme="light"] .theme-light-only {
+  display: block;
+}
+:root[data-theme="light"] .theme-dark-only {
+  display: none;
+}
+
+/* Presenter mode: the disclaimer footer stays visible above the dim layer. */
+html[data-presenting] footer[aria-label="Confidentiality notice"] {
+  position: relative;
+  z-index: 82;
+}

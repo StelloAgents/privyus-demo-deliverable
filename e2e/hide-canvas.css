@@ -1,0 +1,5 @@
+/* Screenshot compares leave out the orbit graph's WebGL canvas (pulses and
+   bloom move every frame). Its DOM overlays stay in the compare. */
+[data-tour="graph"] canvas {
+  visibility: hidden !important;
+}
