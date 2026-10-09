@@ -4,20 +4,7 @@
  * order-of-magnitude estimates and stay in words; do not add precise numbers.
  */
 import type { LucideIcon } from "lucide-react";
-import type { SourceKind } from "@/lib/types";
-import {
-  ArrowLeftRight,
-  Braces,
-  Database,
-  Gauge,
-  History,
-  FileSearch,
-  GitMerge,
-  Globe2,
-  LayoutTemplate,
-  Network,
-  ShieldCheck,
-} from "lucide-react";
+import { FileSearch, Gauge, GitMerge } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /* Sections (table of contents)                                        */
@@ -29,11 +16,8 @@ export const SECTIONS = [
   { id: "system", label: "System layers" },
   { id: "resolution", label: "Entity resolution" },
   { id: "data-model", label: "Data model" },
-  { id: "queries", label: "One-hop queries" },
-  { id: "drawing", label: "Graph drawing" },
   { id: "agents", label: "Agent access" },
-  { id: "stores", label: "Stores and releases" },
-  { id: "risks", label: "Risks and mitigations" },
+  { id: "stores", label: "Stores" },
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -332,125 +316,6 @@ export const MODEL_NOTES = [
 /* One-hop queries                                                     */
 /* ------------------------------------------------------------------ */
 
-export interface QueryRow {
-  action: string;
-  query: string;
-  href: string;
-  linkLabel: string;
-}
-
-export const QUERIES: QueryRow[] = [
-  {
-    action: "Select a bill, see its supporters",
-    query: "edges WHERE dst_id = bill AND type IN (sponsored, cosponsored)\n  JOIN entities",
-    href: "/explore?turn=defense-support-members",
-    linkLabel: "S. 456 supporters",
-  },
-  {
-    action: "Select a member, see the categories",
-    query: "entity_stats WHERE entity_id = member",
-    href: "/explore?turn=hartley-profile",
-    linkLabel: "Sen. Ellen Hartley",
-  },
-  {
-    action: "Open Meetings",
-    query: "edges WHERE src_id = member AND type = attended\n  JOIN entities -- events",
-    href: "/explore?turn=hartley-meetings",
-    linkLabel: "Meetings",
-  },
-  {
-    action: "Open a private meeting",
-    query: "edges WHERE dst_id = meeting AND type = attended",
-    href: "/explore?turn=private-meeting-attendees",
-    linkLabel: "Private meeting",
-  },
-  {
-    action: "“Which defense contractors gave to this senator?”",
-    query: "edges WHERE dst_id = member AND type = contributed\n  JOIN entities -- orgs",
-    href: "/explore?q=Which%20defense%20contractors%20gave%20to%20Hartley%3F",
-    linkLabel: "Defense contractors",
-  },
-  {
-    action: "Open a source",
-    query: "documents WHERE doc_id = edge.source_doc_id",
-    href: "/explore?turn=private-meeting-attendees",
-    linkLabel: "Visitor log source",
-  },
-];
-
-/* ------------------------------------------------------------------ */
-/* How the graph is drawn                                              */
-/* ------------------------------------------------------------------ */
-
-export const DRAW_STEPS: { icon: LucideIcon; title: string; body: string }[] = [
-  {
-    icon: LayoutTemplate,
-    title: "Template",
-    body: "The agent maps the question to a tested query template and fills in the parameters. It does not write free-form SQL.",
-  },
-  {
-    icon: Braces,
-    title: "Graph Delta",
-    body: "It returns the nodes and edges to add, with the answer text, the citations, and the steps. The demo already uses this exact shape.",
-  },
-  {
-    icon: Network,
-    title: "Layout",
-    body: "The app keeps the existing nodes in place and lays out the new nodes around the selected node with a force layout.",
-  },
-  {
-    icon: Globe2,
-    title: "Map Arcs",
-    body: "The map uses the same edges. Each organization and member has a state, so a contribution becomes an arc from one state to another.",
-  },
-];
-
-/** A trimmed copy of the hartley-meetings turn in src/data/script.ts (same shape). */
-export const DELTA_EXAMPLE = `// trimmed: 3 of 5 meetings, 4 of 5 steps
-{
-  "id": "hartley-meetings",
-  "steps": [
-    { "label": "Focus Meetings",
-      "delta": { "add": { "entities": [], "edges": [] },
-                 "focus": "cat-meetings" } },
-    { "label": "Query meeting records",
-      "delta": { "add": { "entities": [], "edges": [] } } },
-    { "label": "Populate meetings",
-      "delta": { "add": {
-        "entities": ["meeting-private", "meeting-meridian",
-                     "meeting-committee"],
-        "edges": ["cat-meetings-meeting-private",
-                  "cat-meetings-meeting-meridian",
-                  "cat-meetings-meeting-committee"] } } },
-    { "label": "Render",
-      "delta": { "add": { "entities": [], "edges": [] },
-                 "focus": "cat-meetings",
-                 "expand": "cat-meetings" } }
-  ],
-  "answer": "Five meetings appear in Hartley’s office records, …",
-  "citations": ["disc-meetings", "disc-private"]
-}`;
-
-/** The node, edge, and document records that the delta refers to (src/data). */
-export const RECORDS_EXAMPLE = `// entities
-{ "id": "meeting-private", "type": "detail",
-  "label": "Private meeting", "sublabel": "Jun 17, 2026" }
-
-// edges
-{ "id": "cat-meetings-meeting-private",
-  "source": "cat-meetings", "target": "meeting-private",
-  "label": "meeting", "date": "2026-06-17",
-  "sourceIds": ["disc-private"] }
-
-// documents
-{ "id": "disc-private", "kind": "DISCLOSURE",
-  "title": "Visitor log · Jun 17, 2026",
-  "geo": { "from": "DC", "to": "OH" } }`;
-
-/* ------------------------------------------------------------------ */
-/* Agent access (planned)                                              */
-/* ------------------------------------------------------------------ */
-
 export type DoorId = "web" | "api" | "mcp";
 
 export interface Door {
@@ -508,116 +373,16 @@ export const CONTROLS = [
 ];
 
 export const AGENT_TOOLS = [
-  { tool: "search_entities", returns: "People, organizations, bills, and filings that match a name or a topic", used: "Call 1" },
+  { tool: "search_entities", returns: "People, organizations, bills, and filings that match a name or a topic" },
   { tool: "get_profile", returns: "One entity with its category counts (votes, trips, meetings, contributions)" },
-  { tool: "expand_connections", returns: "The one-hop neighbors of an entity, filtered by edge type and date", used: "Calls 2 to 4" },
-  { tool: "get_sources", returns: "The original filings behind an edge, with URL, fetch time, and hash", used: "Call 5" },
+  { tool: "expand_connections", returns: "The one-hop neighbors of an entity, filtered by edge type and date" },
+  { tool: "get_sources", returns: "The original filings behind an edge, with URL, fetch time, and hash" },
   { tool: "find_path", returns: "The shortest documented chain between two entities" },
   { tool: "watch", returns: "Notifications when a new record about an entity arrives" },
 ];
 
-/* The agent session. Every record, date, and amount comes from src/data. */
-
-export type SessionNodeId =
-  | "hartley"
-  | "meeting-meridian"
-  | "meeting-ukraine"
-  | "meeting-private"
-  | "voss"
-  | "pierce"
-  | "sen"
-  | "aegis"
-  | "redwood";
-
-/** One line of a tool result: an id, a record name, and an optional detail. */
-export interface ResultLine {
-  id: string;
-  name: string;
-  detail?: string;
-}
-
-export interface SessionCall {
-  tool: string;
-  /** The arguments as printed, one string per line. */
-  args: string[];
-  /** A one-line summary next to the result, for example "3 events". */
-  summary: string;
-  lines: ResultLine[];
-  /** Graph nodes that this result adds. */
-  adds: SessionNodeId[];
-}
-
-export const SESSION_QUESTION =
-  "Which defense contractors met with Sen. Ellen Hartley’s office or gave to her campaign in 2026?";
-
-export const SESSION_CALLS: SessionCall[] = [
-  {
-    tool: "search_entities",
-    args: ['{ query: "Ellen Hartley" }'],
-    summary: "1 person",
-    lines: [{ id: "per_hartley", name: "Sen. Ellen Hartley", detail: "R-OH" }],
-    adds: ["hartley"],
-  },
-  {
-    tool: "expand_connections",
-    args: ['{ id: "per_hartley",', '  type: "attended", from: "2026-01-01" }'],
-    summary: "3 events",
-    lines: [
-      { id: "evt_meridian_0224", name: "Meridian policy briefing", detail: "Feb 24" },
-      { id: "evt_ukraine_0429", name: "Ukraine embassy delegation", detail: "Apr 29" },
-      { id: "evt_private_0617", name: "Private meeting", detail: "Jun 17" },
-    ],
-    adds: ["meeting-meridian", "meeting-ukraine", "meeting-private"],
-  },
-  {
-    tool: "expand_connections",
-    args: ['{ id: "evt_private_0617",', '  type: "attended_by" }'],
-    summary: "3 people",
-    lines: [
-      { id: "per_voss", name: "Clara Voss", detail: "Meridian Public Affairs" },
-      { id: "per_pierce", name: "Nathaniel Pierce", detail: "Aegis Systems" },
-      { id: "per_sen", name: "Dr. Priya Sen", detail: "Atlantic Security Institute" },
-    ],
-    adds: ["voss", "pierce", "sen"],
-  },
-  {
-    tool: "expand_connections",
-    args: ['{ id: "per_hartley",', '  type: "contributed", from: "2026-01-01" }'],
-    summary: "2 contributions",
-    lines: [
-      { id: "org_aegis", name: "Aegis PAC", detail: "$18,750 · Apr 8" },
-      { id: "org_redwood", name: "Redwood PAC", detail: "$7,625 · Aug 21" },
-    ],
-    adds: ["aegis", "redwood"],
-  },
-  {
-    tool: "get_sources",
-    args: ['{ edges: ["edg_private_pierce",', '  "edg_aegis_hartley"] }'],
-    summary: "2 documents",
-    lines: [
-      { id: "[1] doc_disc_private", name: "Visitor log · Jun 17, 2026" },
-      { id: "    url", name: "https://…/visitor-log-0617.pdf" },
-      { id: "    fetched_at", name: "2026-06-18T09:14Z" },
-      { id: "    hash", name: "sha256:9f2c…41ab" },
-      { id: "[2] doc_fec_hartley", name: "FEC Schedule A · Aug 2026" },
-      { id: "    url", name: "https://…/schedule-a/S6OH00123" },
-      { id: "    fetched_at", name: "2026-08-22T06:02Z" },
-      { id: "    hash", name: "sha256:5d07…c3e2" },
-    ],
-    adds: [],
-  },
-];
-
-export const SESSION_ANSWER =
-  "Nathaniel Pierce of Aegis Systems attended a private meeting in Hartley’s office on Jun 17, 2026 [1]. FEC receipts list 2026 contributions to her campaign from Aegis PAC ($18,750) and Redwood PAC ($7,625) [2].";
-
-export const SESSION_SOURCES: { n: number; kind: SourceKind; title: string }[] = [
-  { n: 1, kind: "DISCLOSURE", title: "Visitor log · Jun 17, 2026" },
-  { n: 2, kind: "FEC", title: "FEC Schedule A · Aug 2026" },
-];
-
 /* ------------------------------------------------------------------ */
-/* Stores and release safety                                           */
+/* Stores                                                              */
 /* ------------------------------------------------------------------ */
 
 export const STORES = [
@@ -627,37 +392,3 @@ export const STORES = [
   { store: "Analytics warehouse", holds: "Counts and trends over time", answers: "Dashboard counters, Radar, trends", tech: "ClickHouse, Snowflake, or BigQuery" },
   { store: "App database", holds: "Users, watchlists, checkpoints", answers: "The personal workspace", tech: "Postgres" },
 ];
-
-export const RELEASE_STEPS: { icon: LucideIcon; title: string; body: string }[] = [
-  { icon: Database, title: "Parallel Build", body: "Each release builds new serving tables next to the live ones." },
-  {
-    icon: ShieldCheck,
-    title: "Release Checks",
-    body: "Row counts, ID churn, empty fields, and a fixed set of benchmark queries compared with the last release.",
-  },
-  { icon: ArrowLeftRight, title: "Atomic Swap", body: "The new tables replace the live ones in one atomic swap." },
-  { icon: History, title: "30-Day Rollback", body: "The old tables stay for 30 days, so a rollback takes one command." },
-];
-
-/* ------------------------------------------------------------------ */
-/* Risks and plan                                                      */
-/* ------------------------------------------------------------------ */
-
-export const RISKS = [
-  {
-    risk: "Entity resolution errors",
-    why: "A wrong link between two people is a false claim.",
-    reduce: "Public IDs first, a confidence score on each match, human review for uncertain matches, and a source on every edge.",
-  },
-  {
-    risk: "Inferred claims about real people",
-    why: "Defamation and reputational risk.",
-    reduce: "Show records, not conclusions. The product says “the visitor log lists X”, never “X influenced Y”. Legal review of the wording.",
-  },
-  { risk: "Scanned and messy documents", why: "OCR and extraction errors.", reduce: "Schema checks, confidence scores, and a link to the original page." },
-  { risk: "Source changes", why: "A site changes its layout, and a scraper breaks.", reduce: "Monitoring per connector, alerts, and API sources first." },
-  { risk: "Gaps in the public record", why: "Private meetings are often not disclosed.", reduce: "Be clear about coverage. Show what each source covers and does not cover." },
-  { risk: "LLM cost and speed", why: "Each question calls the model several times.", reduce: "Cache common queries, use templates, and use smaller models for extraction." },
-  { risk: "Data terms", why: "Some sites limit automated access.", reduce: "Check each source’s terms. Prefer official APIs and bulk files." },
-];
-

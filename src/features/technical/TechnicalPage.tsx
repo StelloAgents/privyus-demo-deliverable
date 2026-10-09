@@ -1,9 +1,6 @@
 import { AgentAccess } from "./AgentAccess";
 import { Crosswalk } from "./Crosswalk";
 import { DataModel } from "./DataModel";
-import { GraphDrawing } from "./GraphDrawing";
-import { QueryTable } from "./QueryTable";
-import { Risks } from "./RisksAndPlan";
 import { ScaleBand } from "./ScaleBand";
 import { Section } from "./Section";
 import { StoresAndRelease } from "./StoresAndRelease";
@@ -14,12 +11,6 @@ import { Toc } from "./Toc";
  * The hidden technical architecture page (/technical). Not linked from the app.
  * Content source: technical-architecture.md in the project root.
  */
-
-const FACTS = [
-  { label: "Data", value: "Public records", note: "Federal sources first, then the 50 states" },
-  { label: "Technology", value: "Available today", note: "Standard databases, connectors, and LLM extraction" },
-  { label: "First version", value: "One topic, federal sources", note: "A goal for a small senior team" },
-];
 
 export function TechnicalPage() {
   return (
@@ -40,15 +31,6 @@ export function TechnicalPage() {
             product experience) with fixed and illustrative data. The real product adds three layers under it: collect,
             resolve, and store.
           </p>
-          <dl className="mt-10 grid grid-cols-1 border-y border-line md:grid-cols-3">
-            {FACTS.map((f, i) => (
-              <div key={f.label} className={i > 0 ? "border-t border-line py-5 md:border-t-0 md:border-l md:pl-6" : "py-5 md:pr-6"}>
-                <dt className="t-meta">{f.label}</dt>
-                <dd className="mt-1.5 font-display text-[20px] leading-[26px] font-semibold text-fg-1">{f.value}</dd>
-                <dd className="t-body mt-1 text-fg-2">{f.note}</dd>
-              </div>
-            ))}
-          </dl>
         </section>
 
         <Section
@@ -92,23 +74,7 @@ export function TechnicalPage() {
           <DataModel />
         </Section>
 
-        <Section
-          id="queries"
-          kicker="Layer 3 · Store"
-          title="One-Hop Queries"
-          lead="Each click in the demo maps to a query that reads one sorted range. A columnar database (for example, ClickHouse) or Postgres answers each one in milliseconds. Open a link to see the same click in the demo, next to its query."
-        >
-          <QueryTable />
-        </Section>
 
-        <Section
-          id="drawing"
-          kicker="Layer 4 · Query and display"
-          title="How the Graph Is Drawn"
-          lead="The agent returns data in one fixed shape, and the app draws it. The agent never writes free-form queries."
-        >
-          <GraphDrawing />
-        </Section>
 
         <Section
           id="agents"
@@ -123,18 +89,10 @@ export function TechnicalPage() {
         <Section
           id="stores"
           kicker="Layer 3 · Store"
-          title="Stores and Releases"
-          lead="Each store answers a different type of question. A release reaches the app only after its checks pass, and it can be rolled back."
+          title="Stores"
+          lead="Each store answers a different type of question."
         >
           <StoresAndRelease />
-        </Section>
-
-        <Section
-          id="risks"
-          title="Risks and Mitigations"
-          lead="Each risk below is a known engineering or process problem, with a known way to reduce it."
-        >
-          <Risks />
         </Section>
 
       </article>
