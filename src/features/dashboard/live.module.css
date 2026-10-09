@@ -1,0 +1,133 @@
+/* A new activity row slides in at the top of the feed. Only the row container's opacity and
+   transform animate; the text is never hidden by the animation, and it ends fully visible. */
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rowIn {
+  animation: rowIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The "New" tag stays for 5s, then fades. */
+@keyframes newTag {
+  0%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.newTag {
+  animation: newTag 5.4s linear forwards;
+}
+
+/* The Live chip pulses once when a record arrives. */
+@keyframes chipPulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--live) 0%, transparent);
+  }
+}
+.chipPulse {
+  border-radius: var(--radius-chip);
+  animation: chipPulse 900ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+/* A KPI that just changed: a short teal flash under the number. */
+@keyframes tick {
+  from {
+    color: var(--teal-bright);
+  }
+  to {
+    color: var(--text-1);
+  }
+}
+.tick {
+  animation: tick 900ms ease-out 1;
+}
+
+/* Seat chart: rows fill in from the inside out when the Radar view opens. */
+@keyframes seatIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.seatIn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seatIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowIn,
+  .newTag,
+  .chipPulse,
+  .tick,
+  .seatIn {
+    animation: none;
+  }
+  .newTag {
+    display: none;
+  }
+}
+
+/* A live connection label: in, hold, out over about 6s (the life of its arc). */
+@keyframes linkLabel {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.linkLabel {
+  animation: linkLabel 6s linear forwards;
+}
+
+/* A state named by a live record: its points pulse once. */
+@keyframes statePulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.statePulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid var(--text-1);
+  pointer-events: none;
+  animation: statePulse 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linkLabel,
+  .statePulse {
+    animation: none;
+  }
+  .statePulse {
+    display: none;
+  }
+}

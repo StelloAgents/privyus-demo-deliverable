@@ -1,0 +1,90 @@
+/*
+ * Motion for the system diagram (the one place where motion explains the data flow).
+ * Records move along the connectors as short dashes. Calm: a slow, steady pace.
+ * Under prefers-reduced-motion the dashes do not move and stay hidden.
+ */
+.flow {
+  stroke-dasharray: 2 22;
+  stroke-linecap: round;
+  animation: flow 3.2s linear infinite;
+}
+
+.flowSlow {
+  animation-duration: 4.8s;
+}
+
+@keyframes flow {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Layer groups: color and opacity changes only, 120ms (DESIGN.md section 6, hover). */
+.layer {
+  cursor: pointer;
+  outline: none;
+}
+.layer rect {
+  transition:
+    stroke 120ms ease-out,
+    fill 120ms ease-out;
+}
+.layer:focus-visible .layerFrame {
+  stroke: var(--teal-bright);
+  stroke-width: 2;
+}
+
+/*
+ * Agent session graph: nodes enter from 0.6 scale, edges draw from parent to
+ * child over 280ms (DESIGN.md section 6). Reduced motion: fades only.
+ */
+.nodeIn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nodeIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes nodeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.edgeIn {
+  stroke-dasharray: 1;
+  animation: privy-edge-draw 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lineIn {
+  animation: privy-fade-rise 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nodeIn,
+  .lineIn {
+    animation: privy-fade-in 180ms ease-out both;
+  }
+  .edgeIn {
+    animation: none;
+  }
+}
+
+/* Dimming in the session graph: 200ms fade (DESIGN.md section 6, focus). */
+.fade {
+  transition: opacity 200ms ease-out;
+}
