@@ -4,19 +4,20 @@ import { useDemoStore } from "./store";
 
 /**
  * Whether the graph on screen has come to rest: the canvas has processed the
- * store's latest change, and no node tween or camera move runs. GraphCanvas
+ * store's latest change, and no node tween, window fade, or camera move runs. GraphCanvas
  * reports; presenter steps wait (the caption is placed against final positions).
  */
 let mounted = 0;
 let processed = -1;
 let tweening = false;
+let fading = false;
 let cameraUntil = 0;
 let cameraTimer: ReturnType<typeof setTimeout> | undefined;
 const waiters = new Set<() => void>();
 
 function atRest(): boolean {
   if (mounted === 0) return true;
-  return processed >= useDemoStore.getState().graph.revision && !tweening && performance.now() >= cameraUntil;
+  return processed >= useDemoStore.getState().graph.revision && !tweening && !fading && performance.now() >= cameraUntil;
 }
 
 function check(): void {
@@ -30,6 +31,7 @@ export const graphMotion = {
     return () => {
       mounted -= 1;
       tweening = false;
+      fading = false;
       check();
     };
   },
@@ -39,6 +41,12 @@ export const graphMotion = {
   },
   tweening(on: boolean): void {
     tweening = on;
+    check();
+  },
+  /** Records fading in or out at a timeline window edge (reported every frame; only a change counts). */
+  fading(on: boolean): void {
+    if (on === fading) return;
+    fading = on;
     check();
   },
   camera(ms: number): void {

@@ -9,13 +9,13 @@ import { script } from "@/data/script";
 const OPENING_TURN = "ukraine-stance";
 
 /** Entities on the opening graph open there with the focus on them (a clean chat). */
-const ON_OPENING_GRAPH = new Set(["ukraine", "s456", "hr123"]);
+const ON_OPENING_GRAPH = new Set(["ukraine", "hr815", "s5025", "hr5334"]);
 
 /** Fixture checkpoints have no snapshot. They open the turn for their central entity. */
 const TURN_FOR_CHECKPOINT: Record<string, string> = {
   "checkpoint-ukraine-2025": "ukraine-stance",
-  "checkpoint-hartley-2026": "hartley-profile",
-  "checkpoint-s456-2026": "defense-support-members",
+  "checkpoint-wicker-2026": "wicker-profile",
+  "checkpoint-s5025-2026": "s5025-cosponsors",
 };
 
 function turnHref(turnId: string): string {

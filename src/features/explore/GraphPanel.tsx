@@ -74,8 +74,9 @@ function Crumb({ id, current }: { id: string; current: boolean }) {
       type="button"
       onClick={() => useDemoStore.getState().setFocus(id)}
       aria-current={current ? "location" : undefined}
+      title={crumbLabel(id)}
       className={cx(
-        "rounded-chip px-1.5 py-0.5 text-[12px] leading-4 font-medium whitespace-nowrap transition-colors duration-[120ms]",
+        "max-w-[168px] truncate rounded-chip px-1.5 py-0.5 text-[12px] leading-4 font-medium whitespace-nowrap transition-colors duration-[120ms]",
         current ? "text-fg-1" : "text-fg-3 hover:bg-surface-2 hover:text-fg-1",
       )}
     >
@@ -111,7 +112,7 @@ function Breadcrumbs() {
   return (
     <nav
       aria-label="Focus path"
-      className="pointer-events-auto hidden h-8 max-w-[440px] items-center gap-1 rounded-chip border border-line bg-surface-1 px-1.5 @[560px]:flex"
+      className="pointer-events-auto hidden h-8 max-w-[440px] min-w-0 items-center gap-1 rounded-chip border border-line bg-surface-1 px-1.5 @[560px]:flex"
     >
       {head.map((id, i) => (
         <span key={id} className="flex items-center gap-1">
@@ -158,7 +159,7 @@ function Breadcrumbs() {
         </span>
       ) : null}
       {tail.map((id, i) => (
-        <span key={id} className="flex items-center gap-1">
+        <span key={id} className="flex min-w-0 items-center gap-1">
           {head.length || collapse || i > 0 ? <Sep /> : null}
           <Crumb id={id} current={i === tail.length - 1} />
         </span>

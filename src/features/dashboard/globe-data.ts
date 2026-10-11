@@ -7,21 +7,24 @@ import { exploreEntityHref } from "./links";
 /** Presentation constants: where the places in the demo data sit on the globe. */
 export const PLACES = {
   Washington: { lat: 38.9, lng: -77.04 },
-  Kyiv: { lat: 50.45, lng: 30.52 },
-  Warsaw: { lat: 52.23, lng: 21.01 },
-  Brussels: { lat: 50.85, lng: 4.35 },
-  Tallinn: { lat: 59.44, lng: 24.75 },
-  Odesa: { lat: 46.48, lng: 30.72 },
+  Munich: { lat: 48.14, lng: 11.58 },
+  Vilnius: { lat: 54.69, lng: 25.28 },
+  /** The FARA principal's country (the records name the country, not a city); drawn at Kyiv. */
+  Ukraine: { lat: 50.45, lng: 30.52 },
 } as const;
 export type PlaceName = keyof typeof PLACES;
 
-/** Which place a travel or meeting record refers to. `inbound`: the visitors came to Washington. */
+const REGISTRANT = "Moran Global Strategies";
+const UA_PRINCIPAL = "The Ministry for Strategic Industries of Ukraine";
+
+/**
+ * Which place a travel or contact record refers to. `inbound`: a FARA contact, drawn from the
+ * principal's country to Washington. The record reports a contact; it does not say where it took place.
+ */
 const PLACE_MATCH: { re: RegExp; place: PlaceName; inbound?: boolean }[] = [
-  { re: /ukraine embassy/i, place: "Kyiv", inbound: true },
-  { re: /kyiv/i, place: "Kyiv" },
-  { re: /warsaw/i, place: "Warsaw" },
-  { re: /brussels/i, place: "Brussels" },
-  { re: /tallinn/i, place: "Tallinn" },
+  { re: /^ukraine ·/i, place: "Ukraine", inbound: true },
+  { re: /munich/i, place: "Munich" },
+  { re: /vilnius/i, place: "Vilnius" },
 ];
 
 export interface GlobeArc {
@@ -32,7 +35,7 @@ export interface GlobeArc {
   startLng: number;
   endLat: number;
   endLng: number;
-  /** "Sen. Ellen Hartley → Kyiv · Mar 2026" */
+  /** "Sen. Roger Wicker → Munich · Feb 2025" */
   tooltip: string;
   date: string;
   /** The single most recent record: the one orange arc. */
@@ -40,7 +43,7 @@ export interface GlobeArc {
   href: string;
   /** For the "Recent movements" list. */
   row: {
-    /** "Sen. Ellen Hartley" */
+    /** "Sen. Roger Wicker" */
     title: string;
     /** "To Brussels · Jul 9, 2026" */
     detail: string;
@@ -72,13 +75,13 @@ const monthYear = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso
 
 /** The story turn that shows each category, so a click opens the matching state. */
 const TURN_FOR_CATEGORY: Record<string, string> = {
-  Trips: "hartley-profile",
-  Meetings: "hartley-meetings",
+  Trips: "wicker-profile",
+  Contacts: "wicker-contacts",
 };
 
 /**
- * Arcs from Washington to every travel record, and from abroad to Washington for every
- * foreign delegation, built from the entities and edges in src/data.
+ * Arcs from Washington to every travel record, and from the principal's country to Washington
+ * for every FARA contact, built from the entities and edges in src/data.
  */
 function buildArcs(): GlobeArc[] {
   const byId = new Map(entities.map((e) => [e.id, e]));
@@ -94,11 +97,11 @@ function buildArcs(): GlobeArc[] {
     const person = category.categoryOf ? byId.get(category.categoryOf)?.label : undefined;
     const from: PlaceName = match.inbound ? match.place : "Washington";
     const to: PlaceName = match.inbound ? "Washington" : match.place;
-    const who = match.inbound ? `${detail.label} → ${person ?? "Washington"}` : `${person ?? "Delegation"} → ${match.place}`;
+    const who = match.inbound ? `FARA: ${REGISTRANT} (for ${UA_PRINCIPAL}) → ${person ?? "Congress"}` : `${person ?? "Delegation"} → ${match.place}`;
     const focus = category.label === "Trips" ? category.id : detail.id;
     const lead = category.categoryOf ? byId.get(category.categoryOf) : undefined;
     const src = sources.find((x) => x.id === edge.sourceIds[0]);
-    const what = match.inbound ? "Delegation meeting" : cap(detail.label.replace(match.re, "").trim()) || "Trip";
+    const what = match.inbound ? "FARA contact for a foreign principal" : cap(detail.label.replace(match.re, "").trim()) || "Trip";
     out.push({
       id: edge.id,
       from,
@@ -111,8 +114,8 @@ function buildArcs(): GlobeArc[] {
       date: edge.date,
       href: exploreEntityHref(focus),
       row: {
-        title: match.inbound ? detail.label.replace(/\s+delegation$/i, "") : (person ?? "Delegation"),
-        detail: `To ${match.inbound ? "Washington" : match.place} · ${fullDate(edge.date)}`,
+        title: match.inbound ? `${person ?? "Washington"} · FARA contact` : (person ?? "Delegation"),
+        detail: match.inbound ? `Reported contact · ${fullDate(edge.date)}` : `To ${match.place} · ${fullDate(edge.date)}`,
         what,
         initials: match.inbound ? undefined : lead?.initials,
         sourceKind: src?.kind ?? "DISCLOSURE",
@@ -184,13 +187,12 @@ export const GLOBE_PLACES: GlobePlace[] = placesFor(GLOBE_ARCS);
 export const VIEW_CENTER = { lat: 44, lng: -24 };
 
 /**
- * FARA records on the world map: an arc from the foreign principal's home city to Washington.
- * Presentation constants: the principal's city for each registrant in the demo data.
+ * FARA contacts on the world map: an arc from the foreign principal's country to the member's
+ * office. The arc marks a reported contact by the registrant (Alexandria, VA), not a visit:
+ * the records do not say anyone came to Washington.
  */
 const FARA_ORIGIN: Record<string, { place: PlaceName; principal: string }> = {
-  halvorsen: { place: "Kyiv", principal: "Kyiv Industrial Recovery Association" },
-  tidewater: { place: "Warsaw", principal: "Vistula Defence Industry Chamber" },
-  calder: { place: "Odesa", principal: "Black Sea Reconstruction Fund" },
+  "-ua-": { place: "Ukraine", principal: UA_PRINCIPAL },
 };
 
 export const FARA_ARCS: GlobeArc[] = sources
@@ -209,13 +211,13 @@ export const FARA_ARCS: GlobeArc[] = sources
       startLng: PLACES[o.place].lng,
       endLat: PLACES.Washington.lat,
       endLng: PLACES.Washington.lng,
-      tooltip: `FARA: ${o.principal} → ${first ? first.label : "Congress"} · ${monthYear(src.date)}`,
+      tooltip: `FARA: ${REGISTRANT} (for ${o.principal}) → ${first ? first.label : "Congress"} · ${monthYear(src.date)}`,
       date: src.date,
       latest: false,
       href: exploreEntityHref(first?.id),
       row: {
         title: o.principal,
-        detail: `To Washington · ${fullDate(src.date)}`,
+        detail: `Reported contact · ${fullDate(src.date)}`,
         what: "FARA filing",
         initials: first?.initials,
         sourceKind: src.kind,
@@ -226,4 +228,6 @@ export const FARA_ARCS: GlobeArc[] = sources
     };
     return arc;
   })
-  .filter((a): a is GlobeArc => !!a);
+  .filter((a): a is GlobeArc => !!a)
+  // One arc per person (the first contact): the firm lists some people on many dates.
+  .filter((a, i, all) => all.findIndex((b) => b.row.personId === a.row.personId) === i);

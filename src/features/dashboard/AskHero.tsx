@@ -13,6 +13,7 @@ export function AskHero({ className }: { className?: string }) {
   // In the Home store, so presenter mode can type the question.
   const text = useHome((s) => s.askText);
   const setText = useHome((s) => s.setAskText);
+  const pressed = useHome((s) => s.askPressed);
   // The field starts empty each time Home opens (as a local field would).
   useEffect(() => () => useHome.getState().setAskText(""), []);
   return (
@@ -30,6 +31,7 @@ export function AskHero({ className }: { className?: string }) {
         onSubmit={(q) => router.push(askHref(q))}
         placeholder="Ask anything about people, bills, or connections"
         clearOnSubmit={false}
+        submitPressed={pressed}
       />
       </div>
     </section>

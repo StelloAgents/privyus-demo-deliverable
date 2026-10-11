@@ -129,6 +129,7 @@ export function OrbitTimeline({ m0, months, counts, focusMonth, animate = false 
     <div
       data-caption-avoid
       data-orbit-timeline
+      data-tour="timeline"
       className="absolute inset-x-0 bottom-0 z-10 flex items-stretch gap-5 border-t border-line bg-surface-1 px-5 pt-3 pb-2.5"
       style={{ height: TIMELINE_HEIGHT }}
     >
@@ -227,7 +228,7 @@ export function OrbitTimeline({ m0, months, counts, focusMonth, animate = false 
       <div className="flex w-[150px] shrink-0 flex-col justify-between text-right">
         <div>
           <p className="text-[12px] leading-4 font-medium text-fg-3">Window</p>
-          <p className="mt-0.5 text-[13px] leading-5 font-semibold text-fg-1 tabular-nums">
+          <p data-window-label className="mt-0.5 text-[13px] leading-5 font-semibold text-fg-1 tabular-nums">
             {monthLabel(m0 + startM, true)} to {monthLabel(m0 + endM - 1, true)}
           </p>
         </div>

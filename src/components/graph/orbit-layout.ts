@@ -6,9 +6,9 @@ import type { Catalog, Edge, Entity, XY } from "@/lib/types";
  * streams step by step ends exactly where a replayed state starts.
  *
  * - The focused entity sits at the center (0, 0, 0). A focused category node
- *   (Votes, Meetings, ...) centers its person and makes its ring the active one.
+ *   (Votes, Contacts, ...) centers its person and makes its ring the active one.
  * - One concentric ring per relationship type (Legislation, Sponsor,
- *   Cosponsors, Meetings, Contributions, ...). A person's category nodes are
+ *   Cosponsors, Contacts, Contributions, ...). A person's category nodes are
  *   the anchors and labels of their rings.
  * - A record's angle on its ring is its date, clockwise from the start of the
  *   clock window (the months that the records on screen span). Records of the
@@ -24,12 +24,18 @@ export type RingKey =
   | "sponsor"
   | "cosponsors"
   | "attendees"
+  | "listed"
   | "orgs"
-  | "meetings"
+  | "dates"
+  | "senators"
+  | "house"
+  | "staff"
+  | "press"
+  | "contacts"
   | "contributions"
   | "votes"
   | "trips"
-  | "opinions"
+  | "statements"
   | "others"
   | "topics"
   | "ties";
@@ -40,13 +46,25 @@ export const RING_ORDER: RingKey[] = [
   "sponsor",
   "cosponsors",
   "attendees",
+  // The people a shared contact date lists (centered on the date).
+  "listed",
   "orgs",
-  "meetings",
+  "contacts",
+  // An organization's contacts: the crowded House ring (initials only) sits inside the rings
+  // whose name cards reach outward over it.
+  "house",
+  "senators",
+  "staff",
+  "press",
   "contributions",
   "votes",
   "trips",
-  "opinions",
+  "statements",
   "others",
+  // A person's shared contact dates (the firm's rows of one day), outside the person's own records:
+  // a date and the contact record of the same day line up on the clock, and their cards stay apart.
+  // The people on a date float above it.
+  "dates",
   "topics",
   "ties",
 ];
@@ -56,12 +74,18 @@ const RING_LABEL: Record<RingKey, string> = {
   sponsor: "Sponsor",
   cosponsors: "Cosponsors",
   attendees: "Attendees",
+  listed: "People listed",
   orgs: "Organizations",
-  meetings: "Meetings",
+  dates: "Contact dates",
+  senators: "Senators",
+  house: "House members",
+  staff: "Staff",
+  press: "Press",
+  contacts: "Contacts",
   contributions: "Contributions",
   votes: "Bills",
   trips: "Trips",
-  opinions: "Opinions",
+  statements: "Statements",
   others: "Others",
   topics: "Topics",
   ties: "Ties",
@@ -75,7 +99,7 @@ export interface OrbitNode {
   y: number;
   z: number;
   role: OrbitRole;
-  /** Hops from the center over the drawn edges (0 center, 1 ring, 2 lifted, 3 band or further). */
+  /** Hops from the center over the drawn edges (0 center, 1 ring, 2 lifted, 3 band or further; a few members at 3 lift too). */
   hop: number;
   ghost: boolean;
   ring?: RingKey;
@@ -95,7 +119,7 @@ export interface OrbitRing {
   count: number;
 }
 
-/** A drawn edge. A person's category edges fold into it: Hartley to a meeting, with the meeting edge's id and label. */
+/** A drawn edge. A person's category edges fold into it: Wicker to a contact, with the contact edge's id and label. */
 export interface OrbitEdge {
   id: string;
   a: string;
@@ -190,8 +214,15 @@ function seededAngle(id: string): number {
 /* Geometry                                                            */
 /* ------------------------------------------------------------------ */
 
+/** The rings of an organization's contacts (people grouped by kind). */
+const PERSON_RINGS: RingKey[] = ["senators", "house", "staff", "press"];
+
 /** Height of second-hop nodes above their parent record. */
 export const LIFT = 1.25;
+/** Height of a third-hop member above its lifted record, and how many may float (more go to the band). */
+const THIRD_LIFT = 1.5;
+const MAX_THIRD_HOP = 6;
+const MEETING_RAISE = 0.5;
 const BAND_GAP = 1.5;
 
 /** The inner ring leaves room for the center's label; more rings sit closer together. */
@@ -262,6 +293,15 @@ export function categoryRing(cat: Entity): RingKey {
   return RING_ORDER.includes(key) ? key : "others";
 }
 
+/** The ring for a person among an organization's contacts: Senators, House members, Staff, or Press. */
+function personRing(p: Entity): RingKey | undefined {
+  const group = p.group ?? (p.label.startsWith("Sen.") ? "senate" : p.label.startsWith("Rep.") ? "house" : undefined);
+  return group === "senate" ? "senators" : group === "house" ? "house" : group === "staff" ? "staff" : group === "press" ? "press" : undefined;
+}
+
+/** The ring of a record that is in no category of the center, by its kind (icon). */
+const DETAIL_RING: Record<string, RingKey> = { Plane: "trips", BadgeDollarSign: "contributions", CalendarDays: "dates" };
+
 function ringOf(cfg: OrbitConfig, e: OrbitEdge, center: Entity, other: Entity): RingKey {
   const { catalog } = cfg;
   if (e.via) return categoryRing(catalog.entities[e.via]);
@@ -270,9 +310,18 @@ function ringOf(cfg: OrbitConfig, e: OrbitEdge, center: Entity, other: Entity): 
   if (center.type === "bill" && other.type === "person") return /^sponsor/.test(e.label) ? "sponsor" : "cosponsors";
   if (other.type === "detail") {
     const cat = cfg.recordCategory.get(other.id);
-    return cat ? categoryRing(catalog.entities[cat]) : "ties";
+    if (cat) return categoryRing(catalog.entities[cat]);
+    // A record of another person's: the ring of its kind (a delegation, a contribution, a shared contact date).
+    return DETAIL_RING[other.icon ?? ""] ?? "ties";
   }
   if (other.type === "category") return categoryRing(other);
+  // An organization's contacts (a FARA registrant's): one ring per kind of person.
+  if (center.type === "org" && other.type === "person") {
+    const ring = personRing(other);
+    if (ring) return ring;
+  }
+  // A shared contact date (the firm's rows of one day): the people it lists, on one ring.
+  if (center.type === "detail" && center.icon === "CalendarDays" && other.type === "person") return "listed";
   if (/attended/.test(e.label)) return "attendees";
   if (other.type === "org") return "orgs";
   return "ties";
@@ -402,6 +451,22 @@ function computeOrbit(cfg: OrbitConfig, g: OrbitContent): OrbitLayout {
     }
     frontier = next.sort();
   }
+  // A second-hop node next to several first-hop records floats above the most specific one: the
+  // record with the fewest second-hop neighbors (a person on a shared contact date floats above the
+  // date, not above the firm that lists everyone). Ties keep the breadth-first parent.
+  const hop2Count = new Map<string, number>();
+  const firstHopNbrs = (id: string) => (adj.get(id) ?? []).map((e) => (e.a === id ? e.b : e.a)).filter((o) => hop.get(o) === 1);
+  for (const [id, h] of hop) if (h === 2) for (const p of new Set(firstHopNbrs(id))) hop2Count.set(p, (hop2Count.get(p) ?? 0) + 1);
+  for (const [id, h] of hop) {
+    if (h !== 2) continue;
+    const cur = via.get(id)!;
+    const curParent = cur.a === id ? cur.b : cur.a;
+    let best = curParent;
+    for (const p of [...new Set(firstHopNbrs(id))].sort()) if ((hop2Count.get(p) ?? 0) < (hop2Count.get(best) ?? 0)) best = p;
+    if (best === curParent) continue;
+    const e = (adj.get(id) ?? []).find((x) => (x.a === id ? x.b : x.a) === best);
+    if (e) via.set(id, e);
+  }
   // A first-hop node reached by several edges takes the innermost ring.
   const ringFor = new Map<string, RingKey>();
   for (const [id, h] of hop) {
@@ -447,7 +512,10 @@ function computeOrbit(cfg: OrbitConfig, g: OrbitContent): OrbitLayout {
   }
   // The clock spans the records on the rings (and the context around them), so they spread around it.
   const days: number[] = [];
-  for (const [id, h] of hop) if (h === 1 && dayOf(id) !== undefined) days.push(dayOf(id)!);
+  // Centered on an organization with contacts (a FARA registrant), the clock spans the contacts:
+  // its other records (the principal's registration) sit at the clock's ends.
+  const contactsOnly = center.type === "org" && Array.from(ringFor.values()).some((r) => PERSON_RINGS.includes(r));
+  for (const [id, h] of hop) if (h === 1 && dayOf(id) !== undefined && (!contactsOnly || PERSON_RINGS.includes(ringFor.get(id)!))) days.push(dayOf(id)!);
   for (const h of hintItems) if (h.day !== undefined) days.push(h.day);
   for (const e of edges) {
     if (!e.ghost || e.day === undefined) continue;
@@ -463,6 +531,17 @@ function computeOrbit(cfg: OrbitConfig, g: OrbitContent): OrbitLayout {
       m0 -= Math.floor(pad / 2);
       m1 += Math.ceil(pad / 2);
     }
+    // A firm's contacts carry name cards: a month of room before the first keeps it clear of the
+    // ring labels at 12 o'clock, and two after the last leave the upper left of the dial open
+    // (for the presenter caption).
+    if (contactsOnly) {
+      m0 -= 1;
+      m1 += 2;
+    }
+    // A person's shared contact dates carry the people on them, lifted and named: two months of
+    // room before the first record keep those names clear of the ring labels at 12 o'clock.
+    // (Not with a category in focus: its own ring leads, and the dates ring is dim context.)
+    if (center.type === "person" && !activeCategory && Array.from(ringFor.values()).includes("dates")) m0 -= 2;
     window = [monthStart(m0), monthStart(m1)];
   } else window = empty.window;
   const inWindow = (day?: number): day is number => day !== undefined && day >= window[0] && day < window[1];
@@ -481,8 +560,10 @@ function computeOrbit(cfg: OrbitConfig, g: OrbitContent): OrbitLayout {
     const items: { id: string; a: number; hint?: boolean; day?: number }[] = [];
     for (const [id, k] of ringFor) if (k === ring) items.push({ id, a: angle(id, dayOf(id)), day: dayOf(id) });
     for (const h of hintItems) if (h.ring === ring) items.push({ id: h.id, a: angle(h.id, h.day), hint: true, day: h.day });
-    // A few records of one date still spread out, in date order.
-    spreadBounded(items, Math.max(1.15 / r, items.length <= 6 ? Math.min(0.9, 2.6 / items.length) : 0), lo, hi);
+    // A few records of one date still spread out, in date order. An organization's contacts
+    // carry name cards: up to eight of them spread out the same way.
+    const few = items.length <= (PERSON_RINGS.includes(ring) ? 8 : 6);
+    spreadBounded(items, Math.max(1.15 / r, few ? Math.min(0.9, 2.6 / items.length) : 0), lo, hi);
     for (const it of items) {
       const x = r * Math.cos(it.a);
       const z = r * Math.sin(it.a);
@@ -564,9 +645,38 @@ function computeOrbit(cfg: OrbitConfig, g: OrbitContent): OrbitLayout {
     });
   }
 
+  // Third hop, when few: a person reached through an attendee's other meeting
+  // floats above that meeting, so "who else did they meet" answers read by name.
+  // A crowd, or anything else further away, goes to the band.
+  const third: { id: string; parent: OrbitNode }[] = [];
+  for (const [id, h] of hop) {
+    if (h !== 3 || E(id)?.type !== "person") continue;
+    const e = via.get(id)!;
+    const pn = nodes.get(e.a === id ? e.b : e.a);
+    // Only above a record of an attendee of the centered meeting (an attendee's other meeting).
+    const attendee = pn?.parent ? nodes.get(pn.parent) : undefined;
+    if (pn?.role === "lifted" && E(pn.id)?.type === "detail" && attendee?.ring === "attendees") third.push({ id, parent: pn });
+  }
+  const liftedThird = new Set<string>();
+  if (third.length > 0 && third.length <= MAX_THIRD_HOP) {
+    // The attendees' other meetings rise clear of the attendee cards on the ring.
+    for (const n of nodes.values()) if (n.role === "lifted" && n.hop === 2 && n.parent && nodes.get(n.parent)?.ring === "attendees") n.y += MEETING_RAISE;
+    // Members of one attendee alternate in height, so their names and their meetings' names stack apart.
+    const perAttendee = new Map<string, number>();
+    for (const { id, parent: pn } of third.sort((p, q) => p.id.localeCompare(q.id))) {
+      const k = perAttendee.get(pn.parent!) ?? 0;
+      perAttendee.set(pn.parent!, k + 1);
+      const r = Math.hypot(pn.x, pn.z) + 0.6;
+      const a = Math.atan2(pn.z, pn.x);
+      nodes.set(id, { id, x: r * Math.cos(a), y: pn.y + THIRD_LIFT + (k % 2) * 0.6, z: r * Math.sin(a), role: "lifted", hop: 3, ghost: false, day: dayOf(id), parent: pn.id });
+      liftedThird.add(id);
+    }
+  }
+
   // The outer band: real nodes further away, then the ghost context.
   const band: { id: string; a: number; ghost: boolean; day?: number; parent?: string }[] = [];
   for (const [id, h] of hop) {
+    if (liftedThird.has(id)) continue;
     if (h >= 3 || toBand.includes(id)) {
       const e = via.get(id);
       band.push({ id, a: bandAngle(id, dayOf(id)), ghost: false, day: dayOf(id), parent: e ? (e.a === id ? e.b : e.a) : undefined });

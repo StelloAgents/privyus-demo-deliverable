@@ -22,38 +22,12 @@ export type GraphNoteSpec =
 
 export const graphNotes: GraphNoteSpec[] = [
   {
-    id: 'cosponsor-span',
-    kind: 'span',
-    focus: 's456',
-    ring: 'cosponsors',
-    text: 'Cosponsors joined between {start} and {end}',
-  },
-  {
-    id: 'busiest-stretch',
-    kind: 'stretch',
-    focus: 'hartley',
-    months: 3,
-    minShare: 0.3,
-    text: '{count} of {total} records fall between {start} and {end}',
-  },
-  {
-    id: 'aegis-link',
+    id: 'principal-link',
     kind: 'link',
-    focus: 'meeting-private',
-    from: 'attendee-aegis',
-    to: 'aegis',
-    edge: 'aegis-cat-contributions',
-    text: 'Aegis Systems also appears in her contributions',
-  },
-  {
-    id: 'contribution-vote-meeting',
-    kind: 'timing',
-    focus: 'cat-contributions',
-    points: [
-      { edge: 'aegis-cat-contributions' },
-      { edge: 'cat-votes-vote-s456', label: 'S. 456 vote' },
-      { edge: 'cat-meetings-meeting-private', label: 'Private meeting' },
-    ],
-    text: 'Contribution, vote, and meeting within {weeks} weeks',
+    focus: 'contact-ua-0609',
+    from: 'moran',
+    to: 'ua-ministry',
+    edge: 'moran-ua-ministry',
+    text: 'Registered as its principal Sep 24, 2023 to Jan 31, 2025',
   },
 ];

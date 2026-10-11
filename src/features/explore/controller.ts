@@ -9,9 +9,11 @@ import type { GraphDelta, ScriptTurn } from "@/lib/types";
 import { restoreSavedCheckpoint, saveCurrentExploration } from "@/lib/checkpoints";
 import { dashboard } from "@/data/dashboard";
 import { FIRST_QUESTION } from "@/data/tour-story";
+import { RECORDS_IN_COMMON_QUESTION } from "@/data/script";
 import { ROOT_ID, adjacency, catalog, entity, scriptById, shortLabel, storyTurns } from "./catalog";
 import { NODE_TURN_PREFIX, buildNoMatchTurn, buildNodeTurn, nodeTurnId } from "./narration";
-import { resetTimeWindow } from "@/components/graph/orbit/time";
+import { animateTimeBounds, monthBounds, resetTimeWindow, setTimeBounds, timeAxis } from "@/components/graph/orbit/time";
+import { monthStart } from "@/components/graph/orbit-layout";
 import { useExploreUi } from "./ui-store";
 
 /* ------------------------------------------------------------------ */
@@ -23,61 +25,73 @@ export type Target = { kind: "turn"; id: string } | { kind: "node"; id: string }
 /** Each script turn needs the graph of the turn before it in the story. */
 const PARENT_TURN: Record<string, string | undefined> = {
   "ukraine-stance": undefined,
-  "defense-support-members": "ukraine-stance",
-  "hartley-profile": "defense-support-members",
-  "hartley-meetings": "hartley-profile",
-  "private-meeting-attendees": "hartley-meetings",
-  "hartley-contributions": "hartley-profile",
-  "defense-contractor-contributions": "hartley-profile",
-  "meridian-contact": "hartley-meetings",
-  "house-bill-supporters": "ukraine-stance",
+  "s5025-cosponsors": "ukraine-stance",
+  "wicker-profile": "s5025-cosponsors",
+  "wicker-contacts": "wicker-profile",
+  "moran-contact": "wicker-contacts",
+  "wicker-contributions": "wicker-profile",
+  "defense-pac-contributions": "wicker-profile",
+  "moran-registrant": "wicker-profile",
+  "hr5334-path": "ukraine-stance",
+  "moran-network": "moran-contact",
+  "munich-trip": "wicker-profile",
+  // After the firm's network: each turn adds the records it needs, on the graph of the turn before it.
+  "records-in-common": "moran-network",
+  "same-date-wicker": "moran-network",
+  "member-shared-records": "s5025-cosponsors",
 };
 
 /** A click on a node plays this script turn (the script's own nodeClick triggers come first). */
-const CLICK_TURN: Record<string, string> = { hr123: "house-bill-supporters" };
+const CLICK_TURN: Record<string, string> = { hr5334: "hr5334-path" };
 
 /** The suggested questions in the script, mapped to what they do. */
 const SUGGESTION_TARGETS: Record<string, Target> = {
   "what is the united states' stance on ukraine": { kind: "turn", id: "ukraine-stance" },
-  "who supports s. 456": { kind: "node", id: "s456" },
-  "who supports h.r. 123": { kind: "turn", id: "house-bill-supporters" },
-  "explore sen. ellen hartley": { kind: "node", id: "hartley" },
-  "show the house bill supporters": { kind: "turn", id: "house-bill-supporters" },
-  "show hartley meetings": { kind: "node", id: "cat-meetings" },
-  "show hartley contributions": { kind: "node", id: "cat-contributions" },
-  "who attended the private meeting": { kind: "node", id: "meeting-private" },
-  "which lobbying firm met hartley": { kind: "turn", id: "meridian-contact" },
-  "which defense contractors gave to hartley": { kind: "turn", id: "defense-contractor-contributions" },
+  "who cosponsored s. 5025": { kind: "node", id: "s5025" },
+  "how did h.r. 5334 become law": { kind: "turn", id: "hr5334-path" },
+  "explore sen. roger wicker": { kind: "node", id: "wicker" },
+  "show wicker contacts": { kind: "node", id: "cat-contacts" },
+  "show wicker contributions": { kind: "node", id: "cat-contributions" },
+  "who filed the june 9 contact": { kind: "node", id: "contact-ua-0609" },
+  "which fara registrant contacted wicker": { kind: "turn", id: "moran-registrant" },
+  "which defense pacs gave to wicker": { kind: "turn", id: "defense-pac-contributions" },
+  "who else did moran global strategies contact for ukraine": { kind: "turn", id: "moran-network" },
+  "who was on the munich 2025 delegation list with wicker": { kind: "turn", id: "munich-trip" },
+  "who traveled with wicker": { kind: "turn", id: "munich-trip" },
+  [normalize(RECORDS_IN_COMMON_QUESTION)]: { kind: "turn", id: "records-in-common" },
 };
 
 /** Suggestions in demo-story order, used to top up the list under the last answer. */
 const STORY_SUGGESTIONS = [
-  "Who supports S. 456?",
-  "Explore Sen. Ellen Hartley",
-  "Show Hartley meetings",
-  "Who attended the private meeting?",
-  "Which defense contractors gave to Hartley?",
-  "Which lobbying firm met Hartley?",
-  "Who supports H.R. 123?",
-  "Show Hartley contributions",
+  "Who cosponsored S. 5025?",
+  "Explore Sen. Roger Wicker",
+  "Show Wicker contacts",
+  "Who filed the June 9 contact?",
+  "Which defense PACs gave to Wicker?",
+  "Which FARA registrant contacted Wicker?",
+  "How did H.R. 5334 become law?",
+  "Show Wicker contributions",
 ];
 
 export { FIRST_QUESTION };
 
 /** Keyword rules for typed questions, checked in order. */
 const RULES: { re: RegExp; target: Target }[] = [
-  { re: /private meeting|attend(ed|ees)?|visitor log/, target: { kind: "node", id: "meeting-private" } },
-  { re: /lobby|meridian|clara voss/, target: { kind: "turn", id: "meridian-contact" } },
-  { re: /contractor|defense compan|aegis|boreal|redwood|industry money/, target: { kind: "turn", id: "defense-contractor-contributions" } },
-  { re: /h\.?\s?r\.?\s?123|house bill|ukraine aid act|kessler/, target: { kind: "turn", id: "house-bill-supporters" } },
-  { re: /\bs\.?\s?456\b|senate bill|defense support act/, target: { kind: "node", id: "s456" } },
-  { re: /meeting|\bmet\b|calendar/, target: { kind: "node", id: "cat-meetings" } },
-  { re: /contribution|donation|donor|receipt|money|\bfund(s|ed|ing|er|ers)?\b|\bpacs?\b|financ/, target: { kind: "node", id: "cat-contributions" } },
-  { re: /trip|travel|kyiv|warsaw|brussels|delegation/, target: { kind: "node", id: "cat-trips" } },
-  { re: /\bvot(e|es|ed|ing)\b/, target: { kind: "node", id: "cat-votes" } },
-  { re: /statement|opinion|said|interview|press release/, target: { kind: "node", id: "cat-opinions" } },
-  { re: /hartley/, target: { kind: "node", id: "hartley" } },
-  { re: /stance|ukraine|united states|u\.s\.|position|support/, target: { kind: "turn", id: "ukraine-stance" } },
+  { re: /records? in common|(cosponsor|voted).*(5025|5334).*(5025|5334)/, target: { kind: "turn", id: "records-in-common" } },
+  { re: /who else|other (senators|contacts)|moran.*\b(contact|met|meet)/, target: { kind: "turn", id: "moran-network" } },
+  { re: /munich|travell?ed with|same trip|delegation/, target: { kind: "turn", id: "munich-trip" } },
+  { re: /june 9|jun 9|ministry|principal/, target: { kind: "node", id: "contact-ua-0609" } },
+  { re: /fara|registrant|lobby|moran|foreign agent/, target: { kind: "turn", id: "moran-registrant" } },
+  { re: /defense pac|\bpacs?\b|contractor|boeing|lockheed|northrop|raytheon|\brtx\b|general dynamics/, target: { kind: "turn", id: "defense-pac-contributions" } },
+  { re: /h\.?\s?r\.?\s?5334|became law|become law|public law|signed/, target: { kind: "turn", id: "hr5334-path" } },
+  { re: /\bs\.?\s?5025\b|cosponsor|senate bill|sanctions bill/, target: { kind: "node", id: "s5025" } },
+  { re: /contact|meeting|\bmet\b|email/, target: { kind: "node", id: "cat-contacts" } },
+  { re: /contribution|donation|donor|receipt|money|\bfund(s|ed|ing|er|ers)?\b|financ/, target: { kind: "node", id: "cat-contributions" } },
+  { re: /trip|travel/, target: { kind: "node", id: "cat-trips" } },
+  { re: /\bvot(e|es|ed|ing)\b|roll call/, target: { kind: "node", id: "cat-votes" } },
+  { re: /statement|opinion|said|press release|quote/, target: { kind: "node", id: "cat-statements" } },
+  { re: /wicker/, target: { kind: "node", id: "wicker" } },
+  { re: /stance|ukraine|united states|u\.s\.|position|support|russia/, target: { kind: "turn", id: "ukraine-stance" } },
 ];
 
 function normalize(q: string): string {
@@ -135,7 +149,7 @@ export function prepareTurn(turn: ScriptTurn, visible: Set<string> = visibleSet(
     const extra: string[] = [];
     for (const id of fresh) {
       for (const n of adjacency.get(id) ?? []) {
-        if (!shown.has(n.node) || graphEdges.has(n.edge) || listed.has(n.edge)) continue;
+        if (!shown.has(n.node) || graphEdges.has(n.edge) || listed.has(n.edge) || catalog.edges[n.edge]?.explicit) continue;
         listed.add(n.edge);
         extra.push(n.edge);
       }
@@ -186,6 +200,12 @@ function bringIntoGraph(id: string, depth = 0): boolean {
   const onGraph = () => useDemoStore.getState().graph.entityIds.includes(id);
   if (onGraph()) return true;
   const adder = turnThatAdds(id);
+  // A record whose own click turn adds it (a shared contact date): that turn puts it on the graph
+  // when it plays, on the graph of the turn before it.
+  if (adder?.trigger.nodeClick === id && !useDemoStore.getState().chat.some((c) => c.turnId === adder.id)) {
+    ensureTurnApplied(PARENT_TURN[adder.id]);
+    return false;
+  }
   ensureTurnApplied(adder?.id ?? "ukraine-stance");
   if (onGraph()) return true;
   if (depth > 2) return false;
@@ -221,6 +241,13 @@ export function clickedEntity(turn: ChatTurnState): string | undefined {
   return Object.entries(CLICK_TURN).find(([, t]) => t === turn.turnId)?.[0];
 }
 
+/** The entity a chat turn leaves in focus: its last focus step, or the node it narrates. */
+export function turnFocus(turn: ChatTurnState): string | undefined {
+  const script = scriptById.get(turn.turnId);
+  if (script) return [...script.steps].reverse().find((st) => st.delta.focus)?.delta.focus;
+  return turn.turnId.startsWith(NODE_TURN_PREFIX) ? turn.turnId.slice(NODE_TURN_PREFIX.length) : undefined;
+}
+
 /* ------------------------------------------------------------------ */
 /* Actions                                                             */
 /* ------------------------------------------------------------------ */
@@ -245,6 +272,7 @@ function play(turn: ScriptTurn, opts: PlayOptions): TurnHandle {
   });
 }
 
+/** The first script turn a click on `id` plays (its opening turn). */
 function scriptedClickTurn(id: string): ScriptTurn | undefined {
   const t = storyTurns.find((x) => x.trigger.nodeClick === id);
   if (t) return t;
@@ -252,15 +280,28 @@ function scriptedClickTurn(id: string): ScriptTurn | undefined {
   return alias ? scriptById.get(alias) : undefined;
 }
 
+/**
+ * The script turn a click on `id` plays now: the first of its click turns (story order) that
+ * has not played yet. A node with more than one (Wicker: his profile, then the records he shares
+ * with other people) plays them one by one. The opening turn does not play when the node was
+ * already expanded some other way; then the click narrates the node instead.
+ */
+function nextClickTurn(id: string): ScriptTurn | undefined {
+  const s = useDemoStore.getState();
+  const played = (t: ScriptTurn) => s.chat.some((c) => c.turnId === t.id);
+  const opening = scriptedClickTurn(id);
+  if (!opening) return undefined;
+  if (!played(opening)) return s.graph.expanded.includes(id) ? undefined : opening;
+  return storyTurns.find((t) => t.trigger.nodeClick === id && t !== opening && !played(t));
+}
+
 /** A click on a node, or its "+" control (2.3 to 2.6). Returns the turn it plays. */
 export function clickNode(id: string): TurnHandle | undefined {
   if (!entity(id)) return undefined;
   finishCurrentTurn();
   bringIntoGraph(id);
-  const chat = useDemoStore.getState().chat;
-  const scripted = scriptedClickTurn(id);
-  const expanded = useDemoStore.getState().graph.expanded.includes(id);
-  if (scripted && !expanded && !chat.some((c) => c.turnId === scripted.id)) {
+  const scripted = nextClickTurn(id);
+  if (scripted) {
     ensureTurnApplied(PARENT_TURN[scripted.id]);
     const h = play(prepareTurn(scripted), { question: "", stepsTotalMs: CLICK_MS });
     clickedByKey.set(h.key, id);
@@ -300,13 +341,9 @@ export function ask(question: string): TurnHandle | undefined {
   if (target.kind === "node") {
     const id = target.id;
     bringIntoGraph(id);
-    const scripted = scriptedClickTurn(id);
-    const done = scripted && useDemoStore.getState().chat.some((c) => c.turnId === scripted.id);
-    const turn =
-      scripted && !done && !useDemoStore.getState().graph.expanded.includes(id)
-        ? scripted
-        : buildNodeTurn(id, visibleSet());
-    if (scripted && turn === scripted) ensureTurnApplied(PARENT_TURN[scripted.id]);
+    const scripted = nextClickTurn(id);
+    const turn = scripted ?? buildNodeTurn(id, visibleSet());
+    if (scripted) ensureTurnApplied(PARENT_TURN[scripted.id]);
     return play(prepareTurn(turn), { question: q, stepsTotalMs: turn.steps.length > 2 ? QUESTION_MS : NARRATE_MS });
   }
   const turn = scriptById.get(target.id)!;
@@ -322,6 +359,37 @@ export function resetExploration() {
   s.clearChat();
   resetTimeWindow();
   useExploreUi.setState({ source: null, draft: "", savedRevision: null, sendPressed: false, savePressed: false, pressedNode: null });
+}
+
+/* ------------------------------------------------------------------ */
+/* Timeline window                                                     */
+/* ------------------------------------------------------------------ */
+
+/** A timeline window as its first and last month, inclusive ("YYYY-MM"); `null`: every month. */
+export type MonthWindow = readonly [from: string, to: string] | null;
+
+/** The window edges as days (`null`: the whole axis). */
+function windowBounds(w: MonthWindow): [number | null, number | null] {
+  return w ? [monthBounds(w[0])[0], monthBounds(w[1])[1]] : [null, null];
+}
+
+/** Sets the timeline window at once (a presenter step's settled state). */
+export function setTimeWindow(w: MonthWindow): void {
+  const [start, end] = windowBounds(w);
+  setTimeBounds(start, end);
+}
+
+/** How long the window edges take to move, as a person drags them. */
+const WINDOW_MOVE_MS = 1000;
+
+/**
+ * Moves both window edges to `w`, as a drag of the handles: smoothly over about
+ * a second (at once with reduced motion). Records outside the window fade.
+ */
+export function moveTimeWindow(w: MonthWindow, signal?: AbortSignal): Promise<void> {
+  const [start, end] = windowBounds(w);
+  const { m0, months } = timeAxis(catalog);
+  return animateTimeBounds(start, end, monthStart(m0), monthStart(m0 + months), prefersReducedMotion() ? 0 : WINDOW_MOVE_MS, signal);
 }
 
 /* ------------------------------------------------------------------ */
@@ -483,11 +551,11 @@ export function openCheckpoint(id: string, latestId?: string): boolean {
   if (!fixture) return false;
   // Fixture checkpoints: the story state around their central entity, no animation.
   if (fixture.entityId === ROOT_ID) {
-    // "Central: Ukraine": both bills with their members, the whole map in view (no focus).
+    // "Central: Ukraine": the bills, S. 5025's cosponsors, and H.R. 5334's path to law, the whole map in view (no focus).
     resetExploration();
     applyInstant(storyTurns[0]);
-    applyInstant(scriptById.get("defense-support-members")!);
-    applyInstant(scriptById.get("house-bill-supporters")!);
+    applyInstant(scriptById.get("s5025-cosponsors")!);
+    applyInstant(scriptById.get("hr5334-path")!);
     useDemoStore.getState().setFocus(undefined);
     return true;
   }

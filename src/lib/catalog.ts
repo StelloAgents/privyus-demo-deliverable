@@ -25,7 +25,7 @@ export function buildCatalog(input: {
   };
 }
 
-/** Splits "S. 456 · Defense Support Act" into a number and a title. */
+/** Splits "S. 5025 · Russia sanctions bill, 2026" into a number and a title. */
 export function splitBillLabel(entity: Entity): { number: string; title?: string } {
   const parts = entity.label.split(/\s+[·•|-]\s+/);
   if (parts.length > 1) return { number: parts[0], title: parts.slice(1).join(" · ") };

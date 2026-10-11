@@ -9,11 +9,12 @@ import { iconForEntity } from "@/lib/icons";
 import { useReducedMotion } from "@/lib/motion";
 import { getOrbitConfig, useDemoStore } from "@/lib/store";
 import type { Catalog, Entity } from "@/lib/types";
-import { makeOrbitConfig, monthOfDay, orbitLayout, toDay } from "../orbit-layout";
+import { makeOrbitConfig, monthOfDay, orbitLayout } from "../orbit-layout";
 import { createBridge, type OrbitBridge } from "./bridge";
 import { buildOrbitView, type OrbitView, type ViewNode } from "./model";
 import { dateLabel } from "./notes";
 import { OrbitTimeline, TIMELINE_HEIGHT } from "./OrbitTimeline";
+import { timeAxis } from "./time";
 
 const loadScene = () => import("./OrbitScene");
 // Start loading the WebGL scene with the page, not after it.
@@ -40,6 +41,11 @@ export interface OrbitGraphProps {
 }
 
 const CONTROLS_INSET = 56;
+/**
+ * A hover ends this long after the pointer leaves a node, so the pointer can cross the
+ * gap from a node to its name card (a crowded ring's cards show on hover only).
+ */
+const HOVER_LEAVE_MS = 160;
 
 /**
  * The Explore graph as an orbit (Orbit + Chronos): the focused entity at the
@@ -52,7 +58,14 @@ const NO_NOTES: GraphNoteSpec[] = [];
 export function OrbitGraph({ catalog, rootId, onNodeClick, topInset, refitToken = 0, pressedId, onReady, children, notes = NO_NOTES }: OrbitGraphProps) {
   const graph = useDemoStore((s) => s.graph);
   const reduced = useReducedMotion();
-  const [hover, setHover] = useState<string | null>(null);
+  const [hover, setHoverNow] = useState<string | null>(null);
+  const leaveTimer = useRef<number | undefined>(undefined);
+  const setHover = useCallback((id: string | null) => {
+    window.clearTimeout(leaveTimer.current);
+    if (id) setHoverNow(id);
+    else leaveTimer.current = window.setTimeout(() => setHoverNow(null), HOVER_LEAVE_MS);
+  }, []);
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
   const [bridge] = useState<OrbitBridge>(() => {
     const b = createBridge();
     b.setInsets({ top: topInset, right: 8, bottom: CONTROLS_INSET, left: 8 });
@@ -83,7 +96,8 @@ export function OrbitGraph({ catalog, rootId, onNodeClick, topInset, refitToken 
   const onClick = useCallback(
     (n: ViewNode) => {
       if (n.tier === "ghost") return;
-      setHover(null);
+      window.clearTimeout(leaveTimer.current);
+      setHoverNow(null);
       // An unopened record opens its category (its records land on the ring).
       onNodeClick(n.tier === "hint" && n.category ? n.category : n.id);
     },
@@ -91,17 +105,7 @@ export function OrbitGraph({ catalog, rootId, onNodeClick, topInset, refitToken 
   );
 
   // Timeline axis: every dated record in the catalog.
-  const axis = useMemo(() => {
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (const e of Object.values(catalog.edges)) {
-      if (!e.date) continue;
-      const m = monthOfDay(toDay(e.date));
-      lo = Math.min(lo, m);
-      hi = Math.max(hi, m);
-    }
-    return isFinite(lo) ? { m0: lo, months: hi - lo + 1 } : { m0: 2025 * 12, months: 12 };
-  }, [catalog]);
+  const axis = useMemo(() => timeAxis(catalog), [catalog]);
   const counts = useMemo(() => {
     const out = new Array<number>(axis.months).fill(0);
     // The records the answer is about: a person's own records when the center is a person
@@ -242,6 +246,7 @@ function Overlay({ view, bridge, hover, pressedId, onHover, onClick }: OverlayPr
           <span
             key={`ring-${r.key}`}
             data-ring-label={r.key}
+            data-crowded={r.crowded ? "" : undefined}
             ref={(el) => {
               if (el) bridge.ringLabels.set(r.key, el);
               else bridge.ringLabels.delete(r.key);
@@ -351,7 +356,7 @@ function Avatar({ entity, size, orange }: { entity: Entity; size: number; orange
   );
 }
 
-/** "S. 456" and "Defense Support Act" for a bill; the label and sublabel otherwise. */
+/** "S. 5025" and "Russia sanctions bill, 2026" for a bill; the label and sublabel otherwise. */
 function cardText(e: Entity): { title: string; sub?: string } {
   if (e.type === "bill") {
     const { number, title } = splitBillLabel(e);
@@ -380,11 +385,12 @@ const NodeOverlay = memo(function NodeOverlay({
   const rootRef = useRef<HTMLDivElement>(null);
   const hitRef = useRef<HTMLButtonElement>(null);
   const labelRef = useRef<HTMLElement>(null);
+  const initialsRef = useRef<HTMLSpanElement>(null);
   const id = n.id;
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    bridge.nodes.set(id, { root, hit: hitRef.current, label: labelRef.current });
+    bridge.nodes.set(id, { root, hit: hitRef.current, label: labelRef.current, initials: initialsRef.current });
     return () => {
       if (bridge.nodes.get(id)?.root === root) bridge.nodes.delete(id);
     };
@@ -401,9 +407,11 @@ const NodeOverlay = memo(function NodeOverlay({
   const { title, sub } = cardText(e);
   const hint = n.tier === "hint";
   const name = e.type === "category" ? (n.ringText ?? e.label) : e.label;
+  // On a crowded ring the name card shows on hover or keyboard focus only.
+  const compact = !!n.crowded;
 
   let label: ReactNode = null;
-  const show = n.label !== "none";
+  const show = n.label !== "none" && !compact;
   if (n.label === "center") {
     label = (
       <div
@@ -425,9 +433,9 @@ const NodeOverlay = memo(function NodeOverlay({
         ref={labelRef as React.Ref<HTMLDivElement>}
         data-node-label=""
         data-kind="card"
-        data-show="1"
+        data-show={show ? "1" : "0"}
         {...events}
-        className={`pointer-events-auto absolute top-0 left-0 flex max-w-[250px] cursor-pointer items-center gap-2 rounded-card border py-1 pr-2.5 pl-1 whitespace-nowrap transition-colors duration-[120ms] ${
+        className={`pointer-events-auto absolute top-0 left-0 flex max-w-[250px] cursor-pointer items-center gap-2 rounded-card border py-1 pr-2.5 pl-1 whitespace-nowrap transition-[color,background-color,border-color,box-shadow] duration-[120ms] ${
           hovered || pressed ? "border-line-strong bg-surface-2" : "border-line bg-surface-1/90"
         }`}
       >
@@ -497,6 +505,7 @@ const NodeOverlay = memo(function NodeOverlay({
       data-emphasis={n.emphasis ? "" : undefined}
       data-on-path={n.onPath ? "" : undefined}
       data-pressed={pressed ? "" : undefined}
+      data-crowded={n.crowded ? "" : undefined}
       className="absolute top-0 left-0"
       style={{ visibility: "hidden" }}
     >
@@ -509,6 +518,11 @@ const NodeOverlay = memo(function NodeOverlay({
           aria-hidden={ghost || undefined}
           tabIndex={ghost ? -1 : 0}
           {...events}
+          // Keyboard focus names the node like a hover does (a crowded ring's card shows).
+          onFocus={(ev) => {
+            if (!ghost && ev.currentTarget.matches(":focus-visible")) onHover(id);
+          }}
+          onBlur={() => onHover(null)}
           className={`absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-full outline-offset-2 transition-[outline-color] duration-[120ms] focus-visible:outline-2 focus-visible:outline-teal-bright ${
             pressed || (hovered && !ghost) ? "outline-2 outline-teal-bright" : "outline-0 outline-transparent"
           } ${
@@ -517,6 +531,17 @@ const NodeOverlay = memo(function NodeOverlay({
           style={{ width: 20, height: 20 }}
         />
       )}
+      {n.crowded ? (
+        <span
+          ref={initialsRef}
+          data-node-initials=""
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 left-0 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center leading-none font-semibold tracking-[0.02em] text-fg-1 transition-opacity duration-[120ms]"
+          style={{ fontSize: 9, visibility: "hidden" }}
+        >
+          {e.type === "person" ? initialsOf(e) : createElement(iconForEntity(e), { size: 10, strokeWidth: 1.75 })}
+        </span>
+      ) : null}
       {label}
     </div>
   );

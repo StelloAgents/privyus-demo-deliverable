@@ -1,21 +1,21 @@
 /**
  * A small sample for the /dev/graph test page only. The real fixtures live in
- * src/data/ (owned by the data agent). All people here are fictional.
+ * src/data/ (owned by the data agent). Placeholder names only (Member A, Contact H): not real people.
  */
 import { buildCatalog } from "@/lib/catalog";
 import type { Edge, Entity, ScriptTurn, SourceDoc } from "@/lib/types";
 
 const entities: Entity[] = [
   { id: "t-ukraine", type: "topic", label: "US stance on Ukraine", icon: "flag-ua" },
-  { id: "b-s456", type: "bill", label: "S. 456 · Defense Support Act", icon: "file-text" },
-  { id: "b-hr123", type: "bill", label: "H.R. 123 · Ukraine Aid Act", icon: "file-text" },
-  { id: "p-hartley", type: "person", label: "Sen. Ellen Hartley", sublabel: "R-OH", initials: "EH" },
-  { id: "p-marquez", type: "person", label: "Sen. Isabel Marquez", sublabel: "D-NM", initials: "IM" },
-  { id: "p-bellamy", type: "person", label: "Sen. Thomas Bellamy", sublabel: "R-GA", initials: "TB" },
-  { id: "p-okafor", type: "person", label: "Sen. Daniel Okafor", sublabel: "D-MD", initials: "DO" },
-  { id: "p-whitcomb", type: "person", label: "Sen. Claire Whitcomb", sublabel: "R-NE", initials: "CW" },
-  { id: "p-lindqvist", type: "person", label: "Rep. Karin Lindqvist", sublabel: "D-MN", initials: "KL" },
-  { id: "p-ferraro", type: "person", label: "Rep. Paul Ferraro", sublabel: "R-PA", initials: "PF" },
+  { id: "b-s456", type: "bill", label: "S. 0001 · Sample Senate Bill", icon: "file-text" },
+  { id: "b-hr123", type: "bill", label: "H.R. 0002 · Sample House Bill", icon: "file-text" },
+  { id: "p-hartley", type: "person", label: "Sen. Member A", sublabel: "R-OH", initials: "MA" },
+  { id: "p-marquez", type: "person", label: "Sen. Member B", sublabel: "D-NM", initials: "MB" },
+  { id: "p-bellamy", type: "person", label: "Sen. Member C", sublabel: "R-GA", initials: "MC" },
+  { id: "p-okafor", type: "person", label: "Sen. Member D", sublabel: "D-MD", initials: "MD" },
+  { id: "p-whitcomb", type: "person", label: "Sen. Member E", sublabel: "R-NE", initials: "ME" },
+  { id: "p-lindqvist", type: "person", label: "Rep. Member F", sublabel: "D-MN", initials: "MF" },
+  { id: "p-ferraro", type: "person", label: "Rep. Member G", sublabel: "R-PA", initials: "MG" },
   { id: "c-votes", type: "category", label: "Votes", sublabel: "6", categoryOf: "p-hartley" },
   { id: "c-trips", type: "category", label: "Trips", sublabel: "3", categoryOf: "p-hartley" },
   { id: "c-meetings", type: "category", label: "Meetings", sublabel: "5", categoryOf: "p-hartley" },
@@ -27,11 +27,11 @@ const entities: Entity[] = [
   { id: "d-embassy", type: "detail", label: "Embassy delegation", sublabel: "Apr 22, 2026", icon: "landmark" },
   { id: "d-kyiv", type: "detail", label: "Kyiv", sublabel: "Mar 2026", icon: "plane" },
   { id: "d-contrib-1", type: "detail", label: "$25,000", sublabel: "Aug 2025", icon: "circle-dollar-sign" },
-  { id: "p-renner", type: "person", label: "Graham Renner", sublabel: "Meridian Public Affairs", initials: "GR" },
-  { id: "p-osei", type: "person", label: "Abena Osei", sublabel: "Halvorsen Dynamics", initials: "AO" },
-  { id: "p-castellano", type: "person", label: "Luca Castellano", sublabel: "Atlantic Policy Forum", initials: "LC" },
-  { id: "o-meridian", type: "org", label: "Meridian Public Affairs", sublabel: "Lobbying firm", icon: "building-2" },
-  { id: "o-halvorsen", type: "org", label: "Halvorsen Dynamics", sublabel: "Defense contractor", icon: "factory" },
+  { id: "p-renner", type: "person", label: "Contact H", sublabel: "Sample Lobbying Firm", initials: "CH" },
+  { id: "p-osei", type: "person", label: "Contact J", sublabel: "Sample Contractor", initials: "CJ" },
+  { id: "p-castellano", type: "person", label: "Contact K", sublabel: "Sample Think Tank", initials: "CK" },
+  { id: "o-meridian", type: "org", label: "Sample Lobbying Firm", sublabel: "Lobbying firm", icon: "building-2" },
+  { id: "o-halvorsen", type: "org", label: "Sample Contractor", sublabel: "Defense contractor", icon: "factory" },
 ];
 
 const e = (source: string, target: string, label: string, date?: string): Edge => ({
@@ -75,9 +75,9 @@ const sources: SourceDoc[] = [
   {
     id: "src-1",
     kind: "LDA",
-    title: "LDA Q2 2026 report: Meridian Public Affairs",
+    title: "LDA Q2 2026 report: Sample Lobbying Firm",
     date: "2026-07-20",
-    excerpt: "Lobbying contacts with the office of Sen. Ellen Hartley on defense support appropriations.",
+    excerpt: "Lobbying contacts with the office of Sen. Member A on defense support appropriations.",
   },
   {
     id: "src-2",
@@ -105,9 +105,9 @@ export const sampleTurns: ScriptTurn[] = [
       { label: "Render", delta: { add: { entities: [], edges: [] } } },
     ],
     answer:
-      "Two bills sit at the center of the US stance on Ukraine: S. 456, the Defense Support Act, and H.R. 123, the Ukraine Aid Act. Click a bill to see its supporters.",
+      "Two bills sit at the center of the US stance on Ukraine: S. 0001 and H.R. 0002, two sample bills. Click a bill to see its supporters.",
     citations: ["src-1"],
-    suggestions: ["Who supports S. 456?"],
+    suggestions: ["Who supports S. 0001?"],
   },
   {
     id: "bill",
@@ -122,16 +122,16 @@ export const sampleTurns: ScriptTurn[] = [
         },
       },
     ],
-    answer: "Five senators support S. 456. Sen. Ellen Hartley (R-OH) is the sponsor.",
+    answer: "Five senators support S. 0001. Sen. Member A (R-OH) is the sponsor.",
     citations: ["src-1"],
-    suggestions: ["Explore Sen. Ellen Hartley"],
+    suggestions: ["Explore Sen. Member A"],
   },
   {
     id: "person",
     trigger: { nodeClick: "p-hartley", keywords: ["hartley"] },
     steps: [
       {
-        label: "Open categories for Sen. Ellen Hartley",
+        label: "Open categories for Sen. Member A",
         delta: {
           add: { entities: edgesFrom("p-hartley").map((x) => x.target), edges: ids(edgesFrom("p-hartley")) },
           focus: "p-hartley",
@@ -139,9 +139,9 @@ export const sampleTurns: ScriptTurn[] = [
         },
       },
     ],
-    answer: "Sen. Ellen Hartley has 6 votes, 3 trips, 5 meetings, 4 contributions, 3 opinions, and 2 other records.",
+    answer: "Sen. Member A has 6 votes, 3 trips, 5 meetings, 4 contributions, 3 opinions, and 2 other records.",
     citations: ["src-1", "src-2"],
-    suggestions: ["Show Hartley's meetings"],
+    suggestions: ["Show Member A's meetings"],
   },
   {
     id: "meetings",
@@ -177,8 +177,8 @@ export const sampleTurns: ScriptTurn[] = [
       },
     ],
     answer:
-      "Graham Renner of Meridian Public Affairs, Abena Osei of Halvorsen Dynamics, and Luca Castellano of the Atlantic Policy Forum attended the private meeting.",
+      "Contact H of Sample Lobbying Firm, Contact J of Sample Contractor, and Contact K of the Sample Think Tank attended the private meeting.",
     citations: ["src-1", "src-2"],
-    suggestions: ["What did Meridian lobby on?"],
+    suggestions: ["What did Sample Firm lobby on?"],
   },
 ];

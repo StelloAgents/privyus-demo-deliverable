@@ -16,12 +16,16 @@ export type SourceKind =
 export interface Entity {
   id: string;
   type: EntityType;
-  label: string; // "Sen. Ellen Hartley"
+  label: string; // "Sen. Roger Wicker"
   sublabel?: string; // "R-OH" or "Defense Support"
   initials?: string; // persons only
   icon?: string; // lucide icon name for bill, category, detail, org
   categoryOf?: string; // for category nodes: the person id
+  /** People only: Senate, House, congressional staff, or press (the orbit groups an organization's contacts by it). */
+  group?: PersonGroup;
 }
+
+export type PersonGroup = "senate" | "house" | "staff" | "press";
 
 export interface Edge {
   id: string;
@@ -30,6 +34,12 @@ export interface Edge {
   label: string; // "supports", "sponsored", "met with", "contributed $25,000"
   date?: string; // ISO date
   sourceIds: string[]; // SourceDoc ids that prove this edge
+  /**
+   * The edge joins the graph only when a turn lists it, never as an automatic
+   * connection between two nodes already on screen (a firm's contact list is the
+   * answer to its own question, not context for every view).
+   */
+  explicit?: boolean;
 }
 
 export interface SourceDoc {
@@ -38,6 +48,10 @@ export interface SourceDoc {
   title: string;
   date: string;
   excerpt: string;
+  /** The original public record (opens in a new tab). */
+  url?: string;
+  /** The record in the real-records fact base (src/data/records/facts.ts). */
+  recordId?: string;
 }
 
 export interface GraphDelta {

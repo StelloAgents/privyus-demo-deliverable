@@ -38,6 +38,19 @@ export interface ViewNode {
   category?: string;
   /** The note is about this record: it draws at full strength. */
   emphasis?: boolean;
+  /** A member the question is about (an organization's other contacts): named first, as a card. */
+  answer?: boolean;
+  /**
+   * A person two steps out, above a shared contact date of the center (the firm lists them on
+   * the same date): named with a tag at secondary strength, placed before the cards around it.
+   */
+  peer?: boolean;
+  /**
+   * The node sits on a crowded ring (more than CROWDED_RING records): at rest it shows as
+   * its node and initials, and its name card shows on hover or keyboard focus. Never set on
+   * the center, the orange chain, the focus, or a record the note is about.
+   */
+  crowded?: boolean;
 }
 
 export type EdgeTier = "path" | "focus" | "full" | "dim" | "faint" | "hidden";
@@ -57,6 +70,8 @@ export interface ViewRing extends OrbitRing {
   state: "active" | "normal" | "dim";
   /** Text of the ring label: "Cosponsors · 6". */
   text: string;
+  /** More than CROWDED_RING records on it: its records show their names on hover. */
+  crowded?: boolean;
 }
 
 export interface OrbitView {
@@ -73,10 +88,16 @@ export interface OrbitView {
   marks: OrbitMarks;
 }
 
-const RADIUS = { center: 0.34, major: 0.17, record: 0.13, second: 0.11, faint: 0.075, hint: 0.085 };
+/** The most lifted members an organization-centered view names (more would crowd the labels). */
+const MAX_NAMED_MEMBERS = 8;
+const RADIUS = { center: 0.34, major: 0.17, contact: 0.22, record: 0.13, second: 0.11, faint: 0.075, hint: 0.085 };
+/** The rings of an organization's contacts (orbit-layout: people grouped by kind). */
+const CONTACT_RINGS = new Set<RingKey>(["senators", "house", "staff", "press"]);
 const MAJOR = new Set<Entity["type"]>(["person", "org", "bill", "topic"]);
 /** At most this many edge labels show (the focus edges). */
 const MAX_EDGE_LABELS = 8;
+/** A ring with more records than this names them on hover only (their cards would cover each other). */
+export const CROWDED_RING = 8;
 
 export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: OrbitContent, layout: OrbitLayout, notes: GraphNoteSpec[] = []): OrbitView {
   const realSet = new Set(g.entityIds);
@@ -92,9 +113,9 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
 
   // The orange chain is the current focus chain, near the center only:
   // - a focused category: the spokes from its person to the records on its ring
-  //   (Hartley to her meetings, Hartley to the contractors);
+  //   (Wicker to his contacts, Wicker to the PACs);
   // - else the path from the root to the focus, cut to the nodes on the rings
-  //   and above them (Ukraine, S. 456, Hartley; Hartley to the private meeting).
+  //   and above them (Ukraine, S. 5025, Wicker; Wicker to the June 9 contact).
   const near = (id: string) => {
     const r = layout.nodes.get(id)?.role;
     return r === "center" || r === "ring" || r === "lifted";
@@ -110,7 +131,7 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
       segs.push([centerId, other]);
     }
   } else if (focusId) {
-    // The last two steps of the path into the focus (data edges: Hartley, Meetings, the private meeting).
+    // The last two steps of the path into the focus (data edges: Wicker, Contacts, the June 9 contact).
     const lastTwo = new Set<string>();
     const pe = realEdges.filter((e) => focus.pathEdges.has(e.id));
     for (let at = focusId, i = 0; i < 2; i++) {
@@ -146,6 +167,65 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
     if (other && layout.nodes.get(other)?.role === "ring" && catalog.entities[e.via]?.categoryOf === centerId) categoryOf.set(other, e.via);
   }
 
+  // A few members lifted at the third hop (orbit-layout) answer the question: they and the
+  // records they float above are named, at secondary strength.
+  const namedLifted = new Set<string>();
+  for (const n of layout.nodes.values()) {
+    if (n.role !== "lifted" || n.hop !== 3) continue;
+    namedLifted.add(n.id);
+    // Every lifted record that joins this person (Warner's two contacts), not only the one it floats above.
+    for (const e of layout.edges) {
+      const other = e.a === n.id ? e.b : e.b === n.id ? e.a : undefined;
+      if (!e.ghost && other && layout.nodes.get(other)?.role === "lifted" && catalog.entities[other]?.type === "detail") namedLifted.add(other);
+    }
+  }
+
+  // The people above a shared contact date of the center (the firm's rows of one day) answer
+  // "who else is on this record": they are named, at secondary strength (two steps out).
+  const peers = new Set<string>();
+  for (const n of layout.nodes.values()) {
+    if (n.role === "lifted" && n.hop === 2 && catalog.entities[n.id]?.type === "person" && n.parent && layout.nodes.get(n.parent)?.ring === "dates") {
+      namedLifted.add(n.id);
+      peers.add(n.id);
+    }
+  }
+
+  // Centered on an organization (a FARA registrant), the few members lifted above its contact
+  // records answer "who else did it contact": they are named too.
+  // The members above its "Ties" records (the firm's dated contacts with other senators) are the
+  // answer itself: they draw at full strength and are named first, as cards, before the records.
+  const answers = new Set<string>();
+  if (centerId && catalog.entities[centerId]?.type === "org") {
+    const members = [...layout.nodes.values()].filter((n) => n.role === "lifted" && n.hop === 2 && catalog.entities[n.id]?.type === "person");
+    if (members.length > 0 && members.length <= MAX_NAMED_MEMBERS) {
+      for (const n of members) {
+        namedLifted.add(n.id);
+        if (n.parent && layout.nodes.get(n.parent)?.ring === "ties") answers.add(n.id);
+      }
+    }
+  }
+
+  // Records in common: centered on an organization, two or more bills lifted above its contacts,
+  // each joining two or more of them (S. 5025 cosponsors, H.R. 5334 yes votes). The bills are the
+  // shared records, named at full strength; the contacts on a shared bill stay full, and the
+  // contacts on none dim.
+  const sharedBills = new Map<string, Set<string>>();
+  if (centerId && catalog.entities[centerId]?.type === "org") {
+    for (const n of layout.nodes.values()) {
+      if (n.role !== "lifted" || catalog.entities[n.id]?.type !== "bill") continue;
+      const people = new Set<string>();
+      for (const e of layout.edges) {
+        if (e.ghost) continue;
+        const other = e.a === n.id ? e.b : e.b === n.id ? e.a : undefined;
+        if (other && catalog.entities[other]?.type === "person") people.add(other);
+      }
+      if (people.size >= 2) sharedBills.set(n.id, people);
+    }
+  }
+  const inCommon = sharedBills.size >= 2;
+  const sharers = new Set([...sharedBills.values()].flatMap((ps) => [...ps]));
+  if (inCommon) for (const id of sharers) if (layout.nodes.get(id)?.role === "lifted") namedLifted.add(id);
+
   const nodes: ViewNode[] = [];
   const tierOf = new Map<string, Tier>();
   for (const n of layout.nodes.values()) {
@@ -159,11 +239,13 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
     else if (n.role === "center") tier = "center";
     else if (n.ghost) tier = "ghost";
     else if (n.role === "band") tier = "faint";
+    else if (n.role === "ring" && inCommon && n.ring && CONTACT_RINGS.has(n.ring) && !sharers.has(n.id) && !onPath) tier = "dim";
     else if (n.role === "ring") tier = onPath || !active || n.ring === active ? "full" : "dim";
+    else if (answers.has(n.id) || (inCommon && sharedBills.has(n.id))) tier = "full";
     else {
       // Lifted: the way back to the root draws as secondary; other context above a record
       // stays dim (unnamed dots at full strength would read as answers).
-      tier = onPath ? "second" : "dim";
+      tier = onPath || namedLifted.has(n.id) ? "second" : "dim";
     }
     tierOf.set(n.id, tier);
     let label: LabelKind = "none";
@@ -171,7 +253,7 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
     else if (tier === "anchor") label = "ring";
     else if (tier === "full") label = MAJOR.has(entity.type) ? "card" : "record";
     // Lifted nodes are named only on the orange chain (hover names the others).
-    else if (tier === "second" && onPath) label = "tag";
+    else if (tier === "second" && (onPath || namedLifted.has(n.id))) label = "tag";
     const radius =
       tier === "center"
         ? RADIUS.center
@@ -180,7 +262,10 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
           : tier === "second" || (tier === "dim" && n.role === "lifted")
             ? RADIUS.second
             : MAJOR.has(entity.type)
-              ? RADIUS.major
+              ? // An organization's contacts sit on many rings, so the camera is far: a larger node keeps initials legible.
+                n.role === "ring" && n.ring && CONTACT_RINGS.has(n.ring)
+                ? RADIUS.contact
+                : RADIUS.major
               : RADIUS.record;
     const ring = n.role === "anchor" ? layout.rings.find((r) => r.anchorId === n.id) : undefined;
     nodes.push({
@@ -199,6 +284,8 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
       ring: n.ring,
       ringText: ring ? ringText(ring) : undefined,
       category: categoryOf.get(n.id),
+      answer: answers.has(n.id) || undefined,
+      peer: peers.has(n.id) || undefined,
     });
   }
   // The center person's records that the graph has not opened: a dot at their date on their ring.
@@ -243,6 +330,10 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
     if (bandA && bandB) tier = "hidden";
     else if (e.ghost || bandA || bandB) tier = "faint";
     else if (pathEdges.has(e.id)) tier = "path";
+    // Records in common: the links from each shared bill to its people lead; the firm's own
+    // spokes recede (they are the last step's answer), and so do the contacts on no shared bill.
+    else if (inCommon && (sharedBills.has(e.a) || sharedBills.has(e.b)) && tierOf.get(e.a) !== "dim" && tierOf.get(e.b) !== "dim") tier = "focus";
+    else if (inCommon && (ta === "dim" || tb === "dim" || e.a === centerId || e.b === centerId)) tier = "dim";
     else if (focusEdges.has(e.id)) tier = "focus";
     else if (ta === "dim" || tb === "dim" || ta === "hidden" || tb === "hidden") tier = "dim";
     else tier = "full";
@@ -256,26 +347,43 @@ export function buildOrbitView(catalog: Catalog, rootId: string | undefined, g: 
   const perRing = new Map<string, number>();
   for (const e of focusLabelled) perRing.set(keyOf(e), (perRing.get(keyOf(e)) ?? 0) + 1);
   let shown = 0;
+  // An organization's contacts: the ring label ("Senators · 7") names the relationship already.
   for (const e of focusLabelled) {
+    const ring = layout.nodes.get(e.a === centerId ? e.b : e.a)?.ring;
+    if (ring && CONTACT_RINGS.has(ring)) continue;
     if ((perRing.get(keyOf(e)) ?? 0) > 1 || shown >= MAX_EDGE_LABELS) continue;
     e.showLabel = true;
     shown++;
   }
 
+  // Crowded rings: more than CROWDED_RING records drawn on one ring (S. 5025's 17 cosponsors).
+  const perRingNodes = new Map<RingKey, number>();
+  for (const n of nodes) {
+    if (layout.nodes.get(n.id)?.role !== "ring" || !n.ring || (n.tier !== "full" && n.tier !== "dim")) continue;
+    perRingNodes.set(n.ring, (perRingNodes.get(n.ring) ?? 0) + 1);
+  }
+  const crowdedRings = new Set([...perRingNodes].filter(([, c]) => c > CROWDED_RING).map(([k]) => k));
+
   const rings: ViewRing[] = layout.rings.map((r) => ({
     ...r,
     state: !active ? "normal" : r.key === active ? "active" : "dim",
     text: ringText(r),
+    crowded: crowdedRings.has(r.key) || undefined,
   }));
 
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  const marks = resolveMarks(catalog, { focusId: g.focusId, centerId, nodes, byId, anchoredRings: new Set(anchorOf.keys()) }, notes);
+  const marks = resolveMarks(catalog, { focusId: g.focusId, centerId, nodes, byId, anchoredRings: new Set(anchorOf.keys()), window: layout.window }, notes);
   for (const n of nodes) {
     if (marks.emphasis.has(n.id)) n.emphasis = true;
     // A record the note names shows its name (a lifted node is named only on the orange chain otherwise).
     if (marks.named.has(n.id) && n.label === "none") {
       n.label = "tag";
       if (n.tier === "dim") n.tier = "second";
+    }
+    // On a crowded ring, a record names itself on hover only, unless it is the answer's own
+    // (the orange chain, the focus, a record the note is about).
+    if (n.ring && crowdedRings.has(n.ring) && layout.nodes.get(n.id)?.role === "ring" && (n.tier === "full" || n.tier === "dim") && !n.onPath && !n.focused && !n.emphasis && !n.answer) {
+      n.crowded = true;
     }
   }
 

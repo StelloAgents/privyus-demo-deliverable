@@ -192,13 +192,6 @@ export function SeatChart({ className }: { className?: string }) {
             <span aria-hidden="true">·</span>
             <VoteSwatch vote="nv" /> Not voting {t.nv}
           </span>
-          <span className="t-meta flex items-center gap-1.5">
-            <svg width="14" height="14" aria-hidden="true" className="shrink-0">
-              <circle cx="7" cy="7" r="3.5" fill="var(--text-3)" />
-              <circle cx="7" cy="7" r="6" fill="none" stroke="var(--text-1)" strokeWidth="1.2" />
-            </svg>
-            Sponsor: {memberLabel(vote.sponsorId)}
-          </span>
         </div>
         <p className="t-meta">
           {shortVoteLabel(vote.voteLabel)} · {fullDate(vote.date)}

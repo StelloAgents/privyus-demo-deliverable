@@ -195,8 +195,8 @@ export function Spotlight() {
         <rect x="0" y="0" width="100%" height="100%" fill="var(--tour-dim)" mask={`url(#${maskId})`} />
       </svg>
 
-      {/* The closing slide: the one text slide of the tour, on a near-solid layer in the caption's
-          inverted surface. The disclaimer footer and the progress line stay visible. */}
+      {/* The closing slide: the one text slide of the tour, on the page color of the current theme.
+          The disclaimer footer and the progress line stay visible. */}
       {step.slide ? <ClosingSlide title={step.title} body={step.body} index={index} total={total} reduced={reduced} /> : null}
 
       {/* Caption: presenter guidance next to the spotlight. An inverted surface (the other theme's
@@ -255,14 +255,13 @@ export function Spotlight() {
         className="pointer-events-none fixed inset-x-0 z-[83] h-0.5"
         style={{
           bottom: "var(--footer-height)",
-          // On the closing slide (the inverted surface) the line takes the caption's colors.
-          background: step.slide ? "color-mix(in srgb, var(--tour-caption-text) 30%, transparent)" : "color-mix(in srgb, var(--text-3) 35%, transparent)",
+          background: "color-mix(in srgb, var(--text-3) 35%, transparent)",
         }}
       >
         <div
           className="h-full"
           style={{
-            background: step.slide ? "var(--tour-caption-title)" : "var(--text-1)",
+            background: "var(--text-1)",
             width: `${((index + 1) / total) * 100}%`,
             transition: reduced ? undefined : `width 300ms ${EASE_OUT_EXPO}`,
           }}
@@ -311,21 +310,21 @@ function ClosingSlide({ title, body, index, total, reduced }: { title: string; b
       aria-label={`Step ${index + 1} of ${total}: ${title}`}
       data-tour-slide=""
       className="pointer-events-none fixed inset-x-0 top-0 z-[82] flex flex-col items-center justify-center gap-5 text-center"
-      style={{ bottom: "var(--footer-height)", background: "var(--tour-caption-bg)" }}
+      style={{ bottom: "var(--footer-height)", background: "var(--bg)" }}
       initial={reduced ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: reduced ? 0 : 0.24, ease: "easeOut" }}
     >
-      {/* The surface is inverted, so the logo is the other theme's. */}
+      {/* The slide follows the app theme: the same logo as the top bar. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={LOGO_LIGHT.src} alt="Privyus" width={LOGO_LIGHT.width} height={LOGO_LIGHT.height} decoding="sync" className="theme-dark-only h-[34px] w-auto" />
+      <img src={LOGO_DARK.src} alt="Privyus" width={LOGO_DARK.width} height={LOGO_DARK.height} decoding="sync" className="theme-dark-only h-[34px] w-auto" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={LOGO_DARK.src} alt="Privyus" width={LOGO_DARK.width} height={LOGO_DARK.height} decoding="sync" className="theme-light-only h-[34px] w-auto" />
-      <h2 className="mt-3 font-display text-[44px] leading-[52px] font-semibold" style={{ color: "var(--tour-caption-title)" }}>
+      <img src={LOGO_LIGHT.src} alt="Privyus" width={LOGO_LIGHT.width} height={LOGO_LIGHT.height} decoding="sync" className="theme-light-only h-[34px] w-auto" />
+      <h2 className="mt-3 font-display text-[44px] leading-[52px] font-semibold" style={{ color: "var(--text-1)" }}>
         {title}
       </h2>
       {body ? (
-        <p className="text-[18px] leading-[28px]" style={{ color: "var(--tour-caption-text)" }}>
+        <p className="text-[18px] leading-[28px]" style={{ color: "var(--text-2)" }}>
           {body}
         </p>
       ) : null}

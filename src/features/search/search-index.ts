@@ -186,30 +186,30 @@ export const RECENT: {
   entityId?: string;
 }[] = [
   {
-    label: "Sen. Ellen Hartley",
-    href: "/explore?entity=hartley",
+    label: "Sen. Roger Wicker",
+    href: "/explore?entity=wicker",
     when: "2 hours ago",
-    entityId: "hartley",
+    entityId: "wicker",
   },
   {
-    label: "Meridian Public Affairs",
-    href: "/explore?entity=meridian",
+    label: "Moran Global Strategies, Inc.",
+    href: "/explore?entity=moran",
     when: "Yesterday",
-    entityId: "meridian",
+    entityId: "moran",
   },
   {
-    label: "S. 456 · Defense Support Act",
-    href: "/explore?entity=s456",
+    label: "S. 5025 · Russia sanctions bill, 2026",
+    href: "/explore?entity=s5025",
     when: "3 days ago",
-    entityId: "s456",
+    entityId: "s5025",
   },
 ];
 
 /** "Try asking": questions that map to script turns. */
 export const TRY_ASKING = [
   "What is the United States' stance on Ukraine?",
-  "Which defense contractors gave to Hartley?",
-  "Which lobbying firm met Hartley?",
+  "Which defense PACs gave to Wicker?",
+  "Which FARA registrant contacted Wicker?",
 ];
 
 export function askHref(q: string): string {

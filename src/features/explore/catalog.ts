@@ -33,7 +33,7 @@ export function entity(id: string): Entity | undefined {
   return catalog.entities[id];
 }
 
-/** "S. 456", "Sen. Ellen Hartley", "Meetings", "Private meeting". */
+/** "S. 5025", "Sen. Roger Wicker", "Contacts", "Ukraine · NDAA discussion". */
 export function shortLabel(id: string): string {
   const e = catalog.entities[id];
   if (!e) return id;

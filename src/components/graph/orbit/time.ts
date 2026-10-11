@@ -1,6 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { Catalog } from "@/lib/types";
+import { monthOfDay, monthStart, toDay } from "../orbit-layout";
 
 /**
  * The Chronos time window (days since 1970-01-01) of the orbit graph. The 3D
@@ -39,6 +41,73 @@ export function resetTimeWindow(): void {
   state = INITIAL;
   for (const l of listeners) l();
 }
+
+/** The timeline axis: every dated record in the catalog (first month as year * 12 + month, and the number of months). */
+export function timeAxis(catalog: Catalog): { m0: number; months: number } {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const e of Object.values(catalog.edges)) {
+    if (!e.date) continue;
+    const m = monthOfDay(toDay(e.date));
+    lo = Math.min(lo, m);
+    hi = Math.max(hi, m);
+  }
+  return isFinite(lo) ? { m0: lo, months: hi - lo + 1 } : { m0: 2025 * 12, months: 12 };
+}
+
+/** Sets the window at once (days; `null` bounds: the whole domain), with no playback. */
+export function setTimeBounds(start: number | null, end: number | null): void {
+  if (state.start === start && state.end === end && state.playhead === null && !state.playing) return;
+  timeStore.set({ start, end, playhead: null, playing: false });
+}
+
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+/**
+ * Moves both edges of the window to `start` and `end` (days; `null`: that end of
+ * the domain `[d0, d1]`) over `ms`. Resolves when the edges are there; on abort
+ * the edges stop where they are.
+ */
+export function animateTimeBounds(start: number | null, end: number | null, d0: number, d1: number, ms: number, signal?: AbortSignal): Promise<void> {
+  const s0 = state.start ?? d0;
+  const e0 = state.end ?? d1;
+  const s1 = start ?? d0;
+  const e1 = end ?? d1;
+  if (signal?.aborted) return Promise.resolve();
+  if (ms <= 0 || (s0 === s1 && e0 === e1)) {
+    setTimeBounds(start, end);
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    let raf = 0;
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      resolve();
+    };
+    signal?.addEventListener("abort", stop, { once: true });
+    const tick = (now: number) => {
+      if (signal?.aborted) return;
+      const k = Math.min(1, (now - t0) / ms);
+      if (k >= 1) {
+        signal?.removeEventListener("abort", stop);
+        setTimeBounds(start, end);
+        resolve();
+        return;
+      }
+      const e = easeInOutCubic(k);
+      timeStore.set({ start: s0 + (s1 - s0) * e, end: e0 + (e1 - e0) * e, playhead: null, playing: false });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  });
+}
+
+/** Days of the first day of month `ym` ("YYYY-MM"), and of the day after the month ends. */
+export const monthBounds = (ym: string): [number, number] => {
+  const m = Number(ym.slice(0, 4)) * 12 + Number(ym.slice(5, 7)) - 1;
+  return [monthStart(m), monthStart(m + 1)];
+};
 
 export const useTimeWindow = () => useSyncExternalStore(timeStore.subscribe, timeStore.get, timeStore.get);
 

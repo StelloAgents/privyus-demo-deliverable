@@ -1,7 +1,8 @@
 "use client";
 
 import { nextEvent } from "@/lib/events";
-import { frames, untilAbort } from "@/lib/tour";
+import { prefersReducedMotion } from "@/lib/motion";
+import { frames, sleep, typeInto, untilAbort } from "@/lib/tour";
 import { useHome, type MapView } from "./homeStore";
 import { useLive } from "./live";
 
@@ -10,12 +11,12 @@ import { useLive } from "./live";
  * place, and stops at once when its signal aborts.
  */
 
-/** The fixed live record of the live step: Aegis Systems PAC → Sen. Ellen Hartley, $18,750. */
-const FIXED_RECORD = "fec-hartley";
+/** The fixed live record of the live step: FEC 2025-26 defense PAC transfers to Sen. Dan Sullivan (VA filing addresses to AK). */
+const FIXED_RECORD = "fec-sullivan-2026";
 
 /** What a presenter step shows on Home. */
 export interface HomeView {
-  /** Radar topic index (0 Ukraine Aid Package, 1 Defense Industrial Base). */
+  /** Radar topic index (0 Russia Sanctions and Ukraine, 1 Defense PAC Giving, 2 Foreign Lobbying Contacts). */
   topic: number;
   radarTab: "vote" | "trend";
   mapView: MapView;
@@ -23,19 +24,24 @@ export interface HomeView {
   stateCard: string | null;
   /** The fixed live record is in the activity feed. */
   liveRecord: boolean;
+  /** Unsent text in the ask bar (left out: an empty ask bar). */
+  askDraft?: string;
 }
 
 const fixedRecordIn = () => useLive.getState().arrivals.some((a) => a.forceArc);
 
 /**
- * Puts `v` in place at once: no roll call, no live arc, an empty ask bar, the
- * full seat chart. Idempotent.
+ * Puts `v` in place at once: no roll call, no live arc, the ask bar with
+ * `v.askDraft` (empty when left out) and nothing pressed, the full seat chart.
+ * Idempotent.
  */
 export function applyHomeView(v: HomeView): void {
   const h = useHome.getState();
   const detailCode = h.detail?.kind === "state" ? h.detail.code : null;
   const patch: Partial<ReturnType<typeof useHome.getState>> = {};
-  if (h.askText) patch.askText = "";
+  const askDraft = v.askDraft ?? "";
+  if (h.askText !== askDraft) patch.askText = askDraft;
+  if (h.askPressed) patch.askPressed = false;
   if (h.hoverState) patch.hoverState = null;
   if (h.chamber !== "senate") patch.chamber = "senate";
   if (h.topic !== v.topic) patch.topic = v.topic;
@@ -113,4 +119,26 @@ export async function triggerLiveRecord(signal: AbortSignal): Promise<void> {
   const drawn = nextEvent("arc-drawn", { signal, timeoutMs: 2000 });
   useLive.getState().inject(FIXED_RECORD);
   await drawn;
+}
+
+/** Types a question into the ask bar (presenter mode). It stays unsent. */
+export function typeAsk(question: string, totalMs: number, signal?: AbortSignal): Promise<void> {
+  return typeInto(useHome.getState().setAskText, question, totalMs, signal);
+}
+
+/** How long the ask bar's submit button shows pressed (as the Explore chat's send button). */
+const ASK_PRESS_MS = 120;
+
+/**
+ * Presses the ask bar's submit button on screen (presenter mode). Resolves with
+ * the question in the field, trimmed, as the ask bar submits it; with nothing
+ * when the field is empty or `signal` aborts first.
+ */
+export async function pressAsk(signal?: AbortSignal): Promise<string | undefined> {
+  if (signal?.aborted) return undefined;
+  useHome.setState({ askPressed: true });
+  await sleep(prefersReducedMotion() ? 0 : ASK_PRESS_MS, signal);
+  useHome.setState({ askPressed: false });
+  if (signal?.aborted) return undefined;
+  return useHome.getState().askText.trim() || undefined;
 }

@@ -9,9 +9,8 @@ import { useDemoStore } from "@/lib/store";
 import type { TourApp } from "@/lib/tour";
 import { applyHomeView, type HomeView } from "@/features/dashboard/home-controller";
 import { catalog } from "@/features/explore/catalog";
-import { replayStory } from "@/features/explore/controller";
+import { replayStory, setTimeWindow, type MonthWindow } from "@/features/explore/controller";
 import { useExploreUi } from "@/features/explore/ui-store";
-import { resetTimeWindow } from "@/components/graph/orbit/time";
 import { setSearchText } from "@/features/search/search-store";
 
 /**
@@ -24,9 +23,10 @@ export interface StepState {
   home?: HomeView;
   /**
    * The presenter story played up to and including this turn (src/data/tour-story.ts;
-   * null: a clean exploration), the open source, and the unsent text in the chat field.
+   * null: a clean exploration), the open source, the unsent text in the chat field, and
+   * the timeline window (left out: every month).
    */
-  explore?: { turnId: string | null; sourceOpen?: string; draft?: string };
+  explore?: { turnId: string | null; sourceOpen?: string; draft?: string; window?: MonthWindow };
   /** The text in the search field. */
   search?: string;
   /** This run has saved its one checkpoint (the save step and after). */
@@ -57,8 +57,8 @@ function applyExplore(e: NonNullable<StepState["explore"]>): void {
   if (ui.source !== source || ui.draft !== draft || ui.savedRevision !== null || ui.sendPressed || ui.savePressed || ui.pressedNode) {
     useExploreUi.setState({ source, draft, savedRevision: null, sendPressed: false, savePressed: false, pressedNode: null });
   }
-  // The timeline stays idle in presenter mode: the whole window, no playback.
-  resetTimeWindow();
+  // The timeline window the step left (else every month), no playback.
+  setTimeWindow(e.window ?? null);
 }
 
 /**

@@ -17,6 +17,7 @@ export const SECTIONS = [
   { id: "resolution", label: "Entity resolution" },
   { id: "data-model", label: "Data model" },
   { id: "agents", label: "Agent access" },
+  { id: "private", label: "Private deployment" },
   { id: "stores", label: "Stores" },
 ] as const;
 
@@ -218,11 +219,11 @@ export interface CrosswalkRow {
 }
 
 export const CROSSWALK: CrosswalkRow[] = [
-  { source: "congress.gov", raw: "Hartley, Ellen", keyType: "bioguide", keyValue: "H001234", confidence: "1.00", decidedBy: "public_id" },
-  { source: "OpenFEC", raw: "HARTLEY, ELLEN M.", keyType: "fec_candidate", keyValue: "S6OH00123", confidence: "1.00", decidedBy: "public_id" },
-  { source: "Senate roll call", raw: "Hartley (R-OH)", keyType: "senate_lis", keyValue: "S401", confidence: "1.00", decidedBy: "public_id" },
-  { source: "Senate LDA", raw: "HARTLEY, ELLEN", keyType: "lda_contact", keyValue: "\"HARTLEY, ELLEN\"", confidence: "0.93", decidedBy: "model" },
-  { source: "Travel filing", raw: "Sen. E. Hartley", keyType: "travel_filer", keyValue: "\"Sen. E. Hartley\"", confidence: "0.97", decidedBy: "reviewer" },
+  { source: "congress.gov", raw: "Sen. Wicker, Roger F. [R-MS]", keyType: "bioguide", keyValue: "W000437", confidence: "1.00", decidedBy: "public_id" },
+  { source: "FEC bulk data", raw: "WICKER, ROGER SEN.", keyType: "fec_candidate", keyValue: "S8MS00196", confidence: "1.00", decidedBy: "public_id" },
+  { source: "Senate roll call", raw: "Wicker (R-MS)", keyType: "senate_lis", keyValue: "S318", confidence: "1.00", decidedBy: "public_id" },
+  { source: "FARA filing", raw: "Senator Roger Wicker", keyType: "fara_contact", keyValue: "\"Senator Roger Wicker\"", confidence: "0.98", decidedBy: "model", fara: true },
+  { source: "Delegation release", raw: "U.S. Senator Roger Wicker (R-MS)", keyType: "travel_name", keyValue: "\"U.S. Senator Roger Wicker (R-MS)\"", confidence: "0.97", decidedBy: "reviewer" },
 ];
 
 export const DECIDED_BY_LABEL: Record<DecidedBy, string> = {
@@ -288,7 +289,7 @@ export const SCHEMA: Record<"entities" | "edges" | "documents" | "entity_stats" 
   },
   entity_stats: {
     name: "entity_stats",
-    note: "“Votes 42”, “Trips 6”, “Meetings 11”",
+    note: "“Votes 8”, “Trips 1”, “Contacts 5”",
     columns: [
       { name: "entity_id", type: "text", key: "fk" },
       { name: "category", type: "text" },
@@ -307,7 +308,7 @@ export const SCHEMA: Record<"entities" | "edges" | "documents" | "entity_stats" 
 };
 
 export const MODEL_NOTES = [
-  "A meeting or a trip is a node (type = event). The attendees connect to it. This is the Meetings → Private meeting → attendees chain in the demo.",
+  "A contact or a trip is a node (type = event). The people and firms connect to it. This is the Contacts → June 9 contact → registrant chain in the demo.",
   "Every edge has a source_doc_id. This is the source chip on every answer.",
   "Money from a company PAC or its employees links to the company with an edge that has a confidence score and a source. It is never a silent merge.",
 ];
@@ -379,6 +380,60 @@ export const AGENT_TOOLS = [
   { tool: "get_sources", returns: "The original filings behind an edge, with URL, fetch time, and hash" },
   { tool: "find_path", returns: "The shortest documented chain between two entities" },
   { tool: "watch", returns: "Notifications when a new record about an entity arrives" },
+];
+
+/* ------------------------------------------------------------------ */
+/* Private deployment                                                  */
+/* ------------------------------------------------------------------ */
+
+export interface DeployOption {
+  id: "cloud" | "private";
+  name: string;
+  sub: string;
+}
+
+export const DEPLOY_OPTIONS: DeployOption[] = [
+  { id: "cloud", name: "Privyus Cloud", sub: "One shared public-record graph" },
+  { id: "private", name: "Private Privyus", sub: "Your own instance, in your environment" },
+];
+
+export const DEPLOY_ROWS: { label: string; cloud: string; private: string }[] = [
+  { label: "Where it runs", cloud: "Privyus cloud, shared by all customers", private: "Your cloud account or your data center" },
+  { label: "Public records", cloud: "The live graph, updated daily", private: "Synced in daily as finished serving tables" },
+  {
+    label: "Your own data",
+    cloud: "Watchlists and saved views only",
+    private: "CRM contacts, meeting notes, and memos, linked to the same people and organizations",
+  },
+  { label: "Who sees your queries", cloud: "Privyus runs the service and keeps the logs", private: "Only your team. Query logs stay with you" },
+  { label: "AI agents", cloud: "Rate-limited REST API and MCP server", private: "Your own agents, on your own network" },
+  { label: "Setup", cloud: "Sign in and start", private: "A deployment project with your IT team" },
+];
+
+export const PRIVATE_SOURCES = ["FARA and LDA", "FEC", "congress.gov", "Disclosures"];
+export const PRIVATE_KEPT = ["Collectors", "Entity resolution", "Join logic"];
+export const PRIVATE_CUSTOMER_DATA = ["CRM contacts", "Meeting notes", "Internal memos", "Client files"];
+export const PRIVATE_CORE = [
+  { label: "Public serving tables", sub: "entities, edges, documents" },
+  { label: "Your records, linked", sub: "Matched to the same entities" },
+  { label: "Query templates + citations", sub: "The same answers as the app" },
+  { label: "Your sign-in and audit", sub: "SSO, roles, and logs you own" },
+];
+export const PRIVATE_USERS = [
+  { label: "Analysts", sub: "Web app" },
+  { label: "Your AI agents", sub: "MCP on your network" },
+  { label: "Internal tools", sub: "REST API" },
+];
+
+export const KEPT_NOTES = [
+  {
+    title: "The Build Stays in Privyus",
+    body: "The value is the join: a FARA filing, an LDA report, and an FEC record combined into one node with its sources. The collectors, the resolution models, and the join logic run only in Privyus. A private instance gets the finished serving tables, not the pipeline that builds them.",
+  },
+  {
+    title: "Open Access Returns Answers",
+    body: "The REST API and the MCP server are rate-limited per key and per tool. They return answers with citations, one query at a time. An agent such as Claude gets the answer to its question, not a copy of the joined graph.",
+  },
 ];
 
 /* ------------------------------------------------------------------ */

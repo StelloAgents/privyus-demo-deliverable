@@ -32,7 +32,7 @@ export function Crosswalk() {
       <Surface className="overflow-x-auto">
         <div className="flex min-w-[880px] flex-col">
           <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-4">
-            <p className="t-meta">Sen. Ellen Hartley in five sources</p>
+            <p className="t-meta">Sen. Roger Wicker in five sources</p>
             <div className="flex items-center gap-5">
               {(Object.keys(DASH) as DecidedBy[]).map((k) => (
                 <span key={k} className="t-meta flex items-center gap-2 text-fg-2">
@@ -105,11 +105,11 @@ export function Crosswalk() {
                   className="flex size-[72px] shrink-0 items-center justify-center rounded-full bg-surface-1 font-display text-[22px] font-bold text-fg-1"
                   style={{ border: "2px solid var(--orange)", boxShadow: "var(--focus-glow)" }}
                 >
-                  EH
+                  RW
                 </span>
                 <div className="min-w-0">
-                  <p className="t-card-title">Sen. Ellen Hartley</p>
-                  <p className="t-meta mt-0.5">R-OH · person</p>
+                  <p className="t-card-title">Sen. Roger Wicker</p>
+                  <p className="t-meta mt-0.5">R-MS · person</p>
                 </div>
               </div>
               <p className={cx(MONO, "mt-4 text-fg-2")}>

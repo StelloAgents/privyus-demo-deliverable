@@ -40,6 +40,41 @@ function StartState({ onAsk }: { onAsk: (q: string) => void }) {
   );
 }
 
+/** Space kept above the newest turn when it is pinned to the top of the panel (px). */
+const TURN_TOP_PAD = 12;
+/** How long after a new turn starts the panel may scroll smoothly (ms). */
+const SMOOTH_MS = 600;
+
+/**
+ * Where the chat scrolls for the newest turn: the panel bottom, but never past the turn's top, so
+ * the question and the answer's lead sentence stay visible. When the turn and its suggestions do not
+ * fit, the turn's top sits at the panel top and the suggestions wait below the fold. It depends only
+ * on layout, so forward play and presenter replay land on the same position.
+ */
+function pinnedTop(el: HTMLElement, content: HTMLElement | null): number {
+  const max = Math.max(0, el.scrollHeight - el.clientHeight);
+  const turns = content?.querySelectorAll<HTMLElement>("[data-turn]");
+  const newest = turns?.[turns.length - 1];
+  if (!newest) return max;
+  // offsetTop ignores the fade-rise transform; the scroll box (relative) is the offset parent.
+  const top = newest.offsetTop - TURN_TOP_PAD;
+  // A member's public statements under the answer come fully into view (they are what the turn
+  // adds beside its records); the answer's start then sits above the fold.
+  const block = newest.querySelector<HTMLElement>("[data-public-statements]");
+  if (block) {
+    let y = 0;
+    for (let n: HTMLElement | null = block; n && n !== el; n = n.offsetParent as HTMLElement | null) y += n.offsetTop;
+    return Math.max(0, Math.min(max, Math.max(top, y + block.offsetHeight + TURN_TOP_PAD - el.clientHeight)));
+  }
+  return Math.max(0, Math.min(max, top));
+}
+
+function followTurn(el: HTMLElement, content: HTMLElement | null, smooth: boolean): void {
+  const top = pinnedTop(el, content);
+  if (Math.abs(el.scrollTop - top) < 1) return;
+  el.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
+}
+
 /** The left panel: questions, reasoning steps, streamed answers, sources, follow-ups (2.2, 2.6, 2.7). */
 export function ChatPanel({ onAsk, onSource, onReset }: ChatPanelProps) {
   const chat = useDemoStore((s) => s.chat);
@@ -54,31 +89,54 @@ export function ChatPanel({ onAsk, onSource, onReset }: ChatPanelProps) {
   const progress = last ? `${last.phase}|${last.shownWords}|${last.steps.filter((s) => s.status === "done").length}` : "";
 
   // Keep the newest turn in view while it streams, unless the user scrolls up to read.
+  // The target is the panel bottom, but never past the newest turn's top: the question and the
+  // answer's lead sentence stay visible, and suggestions that do not fit sit below the fold.
+  // The target depends only on layout, so forward play and presenter replay land on the same spot.
+  const contentRef = useRef<HTMLDivElement>(null);
   const userScrolled = useRef(false);
+  const smoothUntil = useRef(0);
+  const mounted = useRef(false);
+  const hasChat = chat.length > 0;
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const onUp = (e: WheelEvent) => {
+    const onWheel = (e: WheelEvent) => {
       if (e.deltaY < 0) userScrolled.current = true;
-      else if (el.scrollHeight - el.scrollTop - el.clientHeight < 24) userScrolled.current = false;
+      else if (el.scrollTop >= pinnedTop(el, contentRef.current) - 24) userScrolled.current = false;
     };
-    el.addEventListener("wheel", onUp, { passive: true });
-    return () => el.removeEventListener("wheel", onUp);
+    el.addEventListener("wheel", onWheel, { passive: true });
+    return () => el.removeEventListener("wheel", onWheel);
   }, []);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     userScrolled.current = false;
-    el.scrollTo({ top: el.scrollHeight, behavior: reduced ? "auto" : "smooth" });
+    // A restored chat (page return, presenter replay) jumps into place; a new turn glides.
+    const glide = !reduced && mounted.current;
+    mounted.current = true;
+    smoothUntil.current = glide ? performance.now() + SMOOTH_MS : 0;
+    followTurn(el, contentRef.current, glide);
   }, [lastKey, reduced]);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || userScrolled.current) return;
-    const frame = requestAnimationFrame(() => {
-      el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
-    });
+    const frame = requestAnimationFrame(() =>
+      followTurn(el, contentRef.current, !reduced && performance.now() < smoothUntil.current),
+    );
     return () => cancelAnimationFrame(frame);
-  }, [progress]);
+  }, [progress, reduced]);
+  // Late layout changes (fonts, chips, suggestions, panel resize) re-apply the same target.
+  useEffect(() => {
+    const el = scrollRef.current;
+    const content = contentRef.current;
+    if (!el || !content || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (!userScrolled.current) followTurn(el, content, !reduced && performance.now() < smoothUntil.current);
+    });
+    ro.observe(el);
+    ro.observe(content);
+    return () => ro.disconnect();
+  }, [hasChat, reduced]);
 
   const busy = !!last && last.phase !== "done";
   const firstStoryIndex = chat.findIndex((t) => t.turnId === "ukraine-stance");
@@ -98,11 +156,11 @@ export function ChatPanel({ onAsk, onSource, onReset }: ChatPanelProps) {
           </button>
         ) : null}
       </header>
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {chat.length === 0 ? (
           <StartState onAsk={onAsk} />
         ) : (
-          <div className="flex flex-col gap-6">
+          <div ref={contentRef} className="flex flex-col gap-6">
             {chat.map((turn, i) => (
               <ChatTurn
                 key={turn.key}

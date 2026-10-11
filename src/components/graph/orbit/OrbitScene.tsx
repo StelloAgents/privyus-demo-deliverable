@@ -10,7 +10,7 @@ import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { graphMotion } from "@/lib/graph-motion";
 import { registerEdgeSampler, type EdgePoint } from "@/lib/graph-scene";
-import { easeOutExpo } from "@/lib/motion";
+import { MOTION, easeOutExpo } from "@/lib/motion";
 import type { BuildCue } from "@/lib/store";
 import { THEME_CHANGE_EVENT } from "@/lib/theme";
 import { CLOCK_START, CLOCK_SWEEP, angleOfDay, monthOfDay, monthStart, type RingKey, RING_ORDER } from "../orbit-layout";
@@ -306,6 +306,10 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
   const hoverLift = useRef<{ id: string | null; lift: boolean; set: boolean }>({ id: null, lift: false, set: false });
   const pressedRef = useRef<string | undefined>(pressed);
   pressedRef.current = pressed;
+  /** 0 to 1: a node of a crowded ring is hovered (its spoke lights, the rest of the ring dims a little). */
+  const crowdHover = useRef(0);
+  /** 0 to 1 per node: how far a crowded ring's name card has faded in. */
+  const reveal = useRef(new Map<string, number>());
 
   /* ------------------------------ objects ------------------------------ */
 
@@ -1063,7 +1067,15 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
     const ts = timeStore.get();
     // The note and its marks fade in once the graph is at rest.
     const markK = reduced ? (now >= A.marksAt ? 1 : 0) : clamp01((now - A.marksAt) / MARK_FADE_MS);
+    // Hover on a crowded ring: the rest of the ring and the other lines dim a little (hover timing).
+    const hoverK = reduced ? 1 : 1 - Math.exp((-delta * 1000 * 3) / MOTION.hoverMs);
+    const crowdTarget = hoverRef.current && v.byId.get(hoverRef.current)?.crowded ? 1 : 0;
+    crowdHover.current += (crowdTarget - crowdHover.current) * hoverK;
+    if (Math.abs(crowdTarget - crowdHover.current) < 0.002) crowdHover.current = crowdTarget;
+    const crowdDim = crowdHover.current;
     let moving = false;
+    // A record crossing a timeline window edge fades in or out (the caption waits for it).
+    let fading = false;
     for (const n of v.nodes) {
       const a = A.nodes.get(n.id);
       const o = nodeObjs.current.get(n.id);
@@ -1079,6 +1091,7 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       const inRange = n.tier === "center" || n.onPath ? 1 : timeVisibility(ts, n.day);
       a.range += (inRange - a.range) * damp;
       if (Math.abs(inRange - a.range) < 0.002) a.range = inRange;
+      else fading = true;
       a.vis = Math.min(a.grow, a.range);
       const isHover = hoverRef.current === n.id || pressedRef.current === n.id;
       const press = pressedRef.current === n.id ? 0.86 : 1;
@@ -1091,7 +1104,10 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       a.scale += (targetScale - a.scale) * (reduced ? 1 : damp);
       const base = TIER_OPACITY[tierNow][light];
       const tierOp = base + (Math.max(base, 0.95) - base) * emph;
-      const op = (isHover && (tierNow === "dim" || tierNow === "faint" || tierNow === "ghost" || tierNow === "hint") ? Math.max(tierOp, 0.75) : tierOp) * a.vis;
+      const op =
+        (isHover && (tierNow === "dim" || tierNow === "faint" || tierNow === "ghost" || tierNow === "hint") ? Math.max(tierOp, 0.75) : tierOp) *
+        a.vis *
+        (n.crowded && !isHover ? 1 - 0.4 * crowdDim : 1);
       a.opacity += (op - a.opacity) * (reduced ? 1 : Math.min(1, delta * 14));
       const show = a.opacity > 0.01 && n.tier !== "hidden" && n.tier !== "anchor";
       o.group.visible = show;
@@ -1215,7 +1231,8 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       const vis = Math.min(a.range, b.range);
       const lit = hoverRef.current !== null && (e.a === hoverRef.current || e.b === hoverRef.current);
       const base = EDGE_OPACITY[e.tier][light];
-      const op = (lit && e.tier !== "path" ? Math.max(base, 0.85) : base) * vis * Math.min(1, Math.max(a.vis, b.vis) * 1.5);
+      const op =
+        (lit && e.tier !== "path" ? Math.max(base, 0.85) : base) * vis * Math.min(1, Math.max(a.vis, b.vis) * 1.5) * (lit || e.tier === "path" ? 1 : 1 - 0.45 * crowdDim);
       if (e.tier === "path" && o.fat) {
         o.line.visible = false;
         o.fat.mat.opacity = op;
@@ -1275,8 +1292,9 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       A.tweening = false;
       graphMotion.tweening(false);
     }
+    graphMotion.fading(fading);
 
-    project(state.size.width, state.size.height);
+    project(state.size.width, state.size.height, hoverK, crowdDim);
 
     if (!readyFired.current && lastRevision.current >= 0) {
       readyFired.current = true;
@@ -1286,7 +1304,7 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
 
   /* ---------------------------- projector ----------------------------- */
 
-  function project(W: number, H: number) {
+  function project(W: number, H: number, hoverK: number, crowdDim: number) {
     const v = viewRef.current;
     const A = anim.current;
     const ins = bridge.insets;
@@ -1311,6 +1329,9 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
     const now = performance.now();
     const centerA = v.centerId ? A.nodes.get(v.centerId) : undefined;
     const centerScreen = centerA ? toScreen(centerA.cur) : { x: W / 2, y: H / 2 };
+    // A crowded ring names its records on hover only: the center's label then places first, so no card
+    // covers it (a hover card never moves it).
+    const crowdedView = v.nodes.some((x) => x.crowded);
     for (const n of v.nodes) {
       const els = bridge.nodes.get(n.id);
       const a = A.nodes.get(n.id);
@@ -1328,6 +1349,15 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       if (els.hit) {
         const d = Math.max(20, rpx * 2 + 6);
         els.hit.style.width = els.hit.style.height = `${d.toFixed(1)}px`;
+      }
+      // A crowded ring's node carries its initials (its name card shows on hover).
+      if (els.initials) {
+        const fits = visible && rpx >= 6.5;
+        els.initials.style.visibility = fits ? "visible" : "hidden";
+        if (fits) {
+          els.initials.style.fontSize = `${Math.min(11, Math.max(7, rpx * 0.62)).toFixed(1)}px`;
+          els.initials.style.opacity = String(hoverRef.current === n.id ? 1 : 1 - 0.4 * crowdDim);
+        }
       }
       const label = els.label;
       if (!label) continue;
@@ -1382,9 +1412,21 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
         const off = rpx + 3;
         const below = { x0: s.x - d.w / 2, y0: s.y + off, transform: `translate(-50%, ${off.toFixed(1)}px)` };
         const above = { x0: s.x - d.w / 2, y0: s.y - off - d.h, transform: `translate(-50%, ${(-off - d.h).toFixed(1)}px)` };
-        alts = [below, above];
-        x0 = below.x0;
-        y0 = below.y0;
+        // A person above a shared contact date names itself above its node: the room between
+        // it and the date below stays free for the date's own label.
+        alts = n.peer ? [above, below] : [below, above];
+        // Named context off the orange chain (an attendee's other meetings and the members
+        // above them), and a shared contact date (the people on it take the room above it),
+        // may also sit beside its node.
+        if ((n.tier === "second" && !n.onPath) || n.ring === "dates") {
+          const side = rpx + 6;
+          alts.push(
+            { x0: s.x + side, y0: s.y - d.h / 2, transform: `translate(${side.toFixed(1)}px, -50%)` },
+            { x0: s.x - side - d.w, y0: s.y - d.h / 2, transform: `translate(${(-side - d.w).toFixed(1)}px, -50%)` },
+          );
+        }
+        x0 = alts[0].x0;
+        y0 = alts[0].y0;
       }
       // A hover brings forward only a label that was hidden when the hover began. A label
       // already on screen keeps its spot: moving it out from under the pointer would end
@@ -1392,7 +1434,22 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       if (hoverRef.current !== hoverLift.current.id) hoverLift.current = { id: hoverRef.current, lift: false, set: false };
       const hovered = hoverRef.current === n.id;
       if (hovered && !hoverLift.current.set) hoverLift.current = { id: n.id, lift: label.style.visibility !== "visible", set: true };
-      const lifted = hovered && hoverLift.current.lift;
+      // A crowded ring's card fades in on hover (or keyboard focus) and out after it.
+      const compact = !!n.crowded;
+      if (compact) {
+        const target = hovered ? 1 : 0;
+        let r = reveal.current.get(n.id) ?? 0;
+        r = reduced ? target : r + (target - r) * hoverK;
+        if (Math.abs(target - r) < 0.01) r = target;
+        reveal.current.set(n.id, r);
+        label.style.opacity = r.toFixed(3);
+        if (!target) {
+          // Fading out where it was; it no longer takes room from other labels.
+          label.style.visibility = r > 0 ? "visible" : "hidden";
+          continue;
+        }
+      } else if (label.style.opacity) label.style.opacity = "";
+      const lifted = hovered && (hoverLift.current.lift || compact);
       const show = label.dataset.show === "1" || hovered;
       if (!show) {
         label.style.visibility = "hidden";
@@ -1400,7 +1457,9 @@ function Scene({ view, bridge, revision, instant, loadToken, reduced, hover, pre
       }
       const pri =
         // The center label always shows, but places itself after the cards around it.
-        lifted ? 1000 : n.tier === "center" ? 450 : n.tier === "anchor" ? 800 : n.focused ? 780 : n.emphasis ? 750 : n.onPath ? 700 : n.tier === "full" ? 500 - (n.ring ? RING_ORDER.indexOf(n.ring) : 0) - proj.z : 300 - proj.z;
+        n.tier === "center" && crowdedView ? 1100 : lifted ? 1000 : n.tier === "center" ? 450 : n.tier === "anchor" ? 800 : n.focused ? 780 : n.emphasis ? 750 : n.onPath ? 700 : n.answer ? 600 - proj.z : n.peer ? 560 - proj.z : n.tier === "full" && n.ring === "dates" ? 520 - proj.z : n.tier === "full" ? 500 - (n.ring ? RING_ORDER.indexOf(n.ring) : 0) - proj.z
+                      // A named member above an attendee's other meeting places before the meeting's own name.
+                      : n.tier === "second" && n.entity.type === "person" ? 340 - proj.z : 300 - proj.z;
       items.push({ el: label, pri, x0, y0, x1: x0 + d.w, y1: y0 + d.h, keep: n.tier === "center" || lifted, ring: n.tier === "anchor", alts });
     }
 

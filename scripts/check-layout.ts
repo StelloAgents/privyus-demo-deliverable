@@ -74,16 +74,23 @@ async function run(kind: GraphLayoutKind) {
     compare(`turn ${storyTurns[k].id} [replay ${ms.toFixed(0)}ms]`, fwd, positions(), fFocus, useDemoStore.getState().graph.focusId);
   }
 
-  // 2. The presenter story: the clicks and questions of steps 8 to 13, against replayStory.
-  for (let k = 1; k <= TOUR_STORY.length; k++) {
+  // 2. The presenter story: the clicks and questions of its Explore steps, against replayStory.
+  // Every prefix of the story: the four-link chain, then the shared date, money, and public statements.
+  const paths: (StoryEntry & { click?: string })[][] = TOUR_STORY.map((_, i) => TOUR_STORY.slice(0, i + 1));
+  for (const path of paths) {
     clearLayoutCache();
     resetExploration();
-    const path: (StoryEntry & { click?: string })[] = TOUR_STORY.slice(0, k);
     for (const e of path) {
       const h = e.question !== undefined ? ask(e.question) : clickNode(e.click!);
       if (!h) throw new Error(`no turn for ${JSON.stringify(e)}`);
       await h.graphBuilt;
       h.finish();
+      // The click or question plays the story's own turn (not a narration of the node).
+      const played = useDemoStore.getState().chat.at(-1)?.turnId;
+      if (played !== e.turnId) {
+        failures++;
+        console.log(`  FAIL story step ${e.turnId}: played ${played}`);
+      }
     }
     const fwd = positions();
     const fFocus = useDemoStore.getState().graph.focusId;

@@ -56,6 +56,8 @@ interface HomeState {
   /** The text in the Home ask bar. */
   askText: string;
   setAskText: (t: string) => void;
+  /** The ask bar's submit button shows pressed (presenter mode presses it on screen). */
+  askPressed: boolean;
   /** The Radar card's chart tab. */
   radarTab: "vote" | "trend";
   setRadarTab: (t: "vote" | "trend") => void;
@@ -98,6 +100,7 @@ export const useHome = create<HomeState>((set, get) => ({
   setGlobeReady: () => set({ globeReady: true }),
   askText: "",
   setAskText: (askText) => set({ askText }),
+  askPressed: false,
   radarTab: "vote",
   setRadarTab: (radarTab) => {
     set({ radarTab });

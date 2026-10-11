@@ -131,7 +131,7 @@ export function RadarCard({ className }: { className?: string }) {
   // The map follows the chart: "Senate vote" shows the United States, "Trend" the world.
   const chart = useHome((s) => s.radarTab);
   const setRadarTab = useHome((s) => s.setRadarTab);
-  // The vote tab applies to the topics tied to S. 456 and H.R. 123; Allied Security shows the trend only.
+  // The vote tab applies to the topics tied to the roll calls; Foreign Lobbying Contacts shows the trend only.
   const hasVote = index === 0;
   const shown: Chart = hasVote ? chart : "trend";
   const trend = TRENDS[index] ?? TRENDS[0];

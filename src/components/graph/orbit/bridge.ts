@@ -10,6 +10,8 @@ export interface NodeEls {
   root: HTMLElement;
   hit?: HTMLElement | null;
   label?: HTMLElement | null;
+  /** The initials (or icon) drawn on a node of a crowded ring, which names itself on hover. */
+  initials?: HTMLElement | null;
 }
 
 export interface NoteEls {

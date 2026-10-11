@@ -1,6 +1,7 @@
 import { AgentAccess } from "./AgentAccess";
 import { Crosswalk } from "./Crosswalk";
 import { DataModel } from "./DataModel";
+import { PrivateDeployment } from "./PrivateDeployment";
 import { ScaleBand } from "./ScaleBand";
 import { Section } from "./Section";
 import { StoresAndRelease } from "./StoresAndRelease";
@@ -28,7 +29,7 @@ export function TechnicalPage() {
           <p className="mt-5 max-w-[760px] text-[17px] leading-[28px] text-fg-2">
             The hard part of Privyus is the data work under the screens. Records about one person sit in many sources,
             and each one must join a single node with a link to the original record. The demo shows layer 4 (the
-            product experience) with fixed and illustrative data. The real product adds three layers under it: collect,
+            product experience) with a fixed set of public records, retrieved October 2026. The real product adds three layers under it: collect,
             resolve, and store.
           </p>
         </section>
@@ -84,6 +85,16 @@ export function TechnicalPage() {
           lead="Privyus can serve AI agents from the same core as the app, through a REST API and an MCP server. Every result carries its sources, so an agent can cite the filing behind each claim. Agents will do a growing share of the research that analysts do today."
         >
           <AgentAccess />
+        </Section>
+
+        <Section
+          id="private"
+          kicker="Deployment"
+          title="Private Deployment"
+          badge="Planned"
+          lead="A customer can run its own Privyus inside its own company. The private instance joins the public-record graph with the customer's own records, such as CRM contacts and meeting notes. Those records never leave the customer's environment."
+        >
+          <PrivateDeployment />
         </Section>
 
         <Section

@@ -53,14 +53,14 @@ function buildTrend(all: string[]): Trend {
 }
 
 const byId = new Map(entities.map((e) => [e.id, e]));
-const isContractorRecord = (s: SourceDoc) =>
-  (s.subjectIds ?? []).some((id) => byId.get(id)?.type === "org" && /contractor/i.test(byId.get(id)?.sublabel ?? ""));
+const isPacRecord = (s: SourceDoc) =>
+  (s.subjectIds ?? []).some((id) => byId.get(id)?.type === "org" && /PAC/.test(byId.get(id)?.sublabel ?? ""));
 
 /** The records behind each Radar topic (same order as the Radar topics). */
 export const TOPIC_RECORDS: ((s: SourceDoc) => boolean)[] = [
   () => true,
-  (s) => (s.kind === "FEC" || s.kind === "LDA" || s.kind === "DISCLOSURE") && isContractorRecord(s),
-  (s) => s.kind === "TRAVEL" || s.kind === "FARA" || s.kind === "STATEMENT",
+  (s) => s.kind === "FEC" && isPacRecord(s),
+  (s) => s.kind === "FARA" || s.kind === "TRAVEL",
 ];
 
 export const TRENDS: Trend[] = TOPIC_RECORDS.map((match, i) =>

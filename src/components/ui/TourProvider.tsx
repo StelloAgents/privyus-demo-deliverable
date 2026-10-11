@@ -63,6 +63,8 @@ export function TourProvider() {
       const PREV = ["ArrowLeft", "PageUp", "Backspace"];
       const tourKey = [...NEXT, ...PREV, "Escape", "n", "N", "Home", "End"].includes(e.key);
       if (!tourKey) return;
+      // Esc with the footer's sources notice open closes the notice, not presenter mode.
+      if (e.key === "Escape" && document.querySelector("[data-disclaimer-pop]:not([hidden])")) return;
       if (typingIn(e.target) && e.target === userField && e.key !== "Escape") {
         // The presenter clicked into a field and is typing: only an arrow or a
         // page key on an empty field drives the tour.

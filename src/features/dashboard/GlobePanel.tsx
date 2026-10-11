@@ -128,7 +128,9 @@ function HouseDot({ code, dim, hot }: { code: string; dim: boolean; hot: boolean
   const parts: { n: number; color: string; op: number }[] = [
     { n: st.byParty.D.yes, color: PARTY_COLOR.D, op: 1 },
     { n: st.byParty.D.no, color: PARTY_COLOR.D, op: 0.35 },
-    { n: st.byParty.D.nv + st.byParty.R.nv, color: "var(--text-3)", op: 0.6 },
+    { n: st.byParty.I?.yes ?? 0, color: PARTY_COLOR.I, op: 1 },
+    { n: st.byParty.I?.no ?? 0, color: PARTY_COLOR.I, op: 0.35 },
+    { n: st.byParty.D.nv + st.byParty.R.nv + (st.byParty.I?.nv ?? 0), color: "var(--text-3)", op: 0.6 },
     { n: st.byParty.R.no, color: PARTY_COLOR.R, op: 0.35 },
     { n: st.byParty.R.yes, color: PARTY_COLOR.R, op: 1 },
   ];
@@ -187,9 +189,9 @@ function stateSummary(code: string, chamber: "senate" | "house"): string {
   if (chamber === "house") {
     const st = houseStateVotes.find((h) => h.state === code);
     if (!st) return name;
-    const yes = st.byParty.R.yes + st.byParty.D.yes;
-    const no = st.byParty.R.no + st.byParty.D.no;
-    return `${name} · ${st.seats} seats · ${yes} yes, ${no} no`;
+    const yes = st.byParty.R.yes + st.byParty.D.yes + (st.byParty.I?.yes ?? 0);
+    const no = st.byParty.R.no + st.byParty.D.no + (st.byParty.I?.no ?? 0);
+    return `${name} · ${st.seats} members · ${yes} yes, ${no} no`;
   }
   const seats = SENATE_SEATS.filter((s) => s.state === code);
   return `${name} · ${seats.map((s) => `${s.party} ${VOTE_NAME[s.vote].toLowerCase()}`).join(", ")}`;
@@ -268,16 +270,17 @@ function HouseStateRows({ code }: { code: string }) {
   if (!st) return null;
   return (
     <ul className="flex flex-col gap-2">
-      <li className="t-meta">{st.seats} seats</li>
-      {(["D", "R"] as const)
-        .filter((p) => st.byParty[p].yes + st.byParty[p].no + st.byParty[p].nv > 0)
-        .map((p) => (
+      <li className="t-meta">{st.seats} members on the roll</li>
+      {(["D", "I", "R"] as const)
+        .filter((p) => { const c = st.byParty[p]; return !!c && c.yes + c.no + c.nv > 0; })
+        .map((p) => ({ p, c: st.byParty[p]! }))
+        .map(({ p, c }) => (
           <li key={p} className="flex items-center gap-2">
             <PartyChip party={p} />
             <span className="text-[13px] leading-4 text-fg-1">{PARTY_NAME[p]}s</span>
             <span className="t-meta ml-auto text-fg-2 tabular-nums">
-              {st.byParty[p].yes} yes · {st.byParty[p].no} no
-              {st.byParty[p].nv ? ` · ${st.byParty[p].nv} not voting` : ""}
+              {c.yes} yes · {c.no} no
+              {c.nv ? ` · ${c.nv} not voting` : ""}
             </span>
           </li>
         ))}
@@ -740,16 +743,12 @@ export function GlobePanel({ className }: { className?: string }) {
             <span className="flex items-center gap-2">
               <span className="flex items-center gap-1">
                 <span className="inline-block h-0.5 w-3 rounded-full bg-teal-bright" aria-hidden="true" />
-                FEC contributions
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-0.5 w-3 rounded-full bg-fg-2" aria-hidden="true" />
-                Lobbying contacts
+                FEC PAC transfers, 2023-24
               </span>
             </span>
           ) : null}
           {(["R", "D", "I"] as const).map((p) =>
-            kind === "money" || (chamber === "house" && p === "I") ? null : (
+            kind === "money" ? null : (
               <span key={p} className="flex items-center gap-1">
                 <span className="inline-block h-2 w-2 rounded-full" style={{ background: PARTY_COLOR[p] }} aria-hidden="true" />
                 {p}

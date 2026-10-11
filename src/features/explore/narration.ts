@@ -55,25 +55,30 @@ function categoryAnswer(cat: Entity): string {
   const list = (items: typeof kids) => joinList(items.map((k) => withDate(k.other.label, k.edge.date)));
   switch (cat.label) {
     case "Votes": {
-      const yes = kids.filter((k) => /^Yes\b/.test(k.other.label));
-      const no = kids.filter((k) => /^No\b/.test(k.other.label));
+      const yea = kids.filter((k) => /^Yea\b/.test(k.other.label));
+      const nay = kids.filter((k) => /^Nay\b/.test(k.other.label));
       const first = kids[0]?.edge.date;
       const last = kids[n - 1]?.edge.date;
-      const noText = no.length
-        ? ` ${countWord(no.length)} is a No vote: ${no.map((k) => k.other.label.replace(/^No · /, "the ")).join(", ")}.`
+      const nayText = nay.length
+        ? ` ${countWord(nay.length)} ${nay.length === 1 ? "is a Nay vote" : "are Nay votes"}: ${nay.map((k) => k.other.label.replace(/^Nay · /, "")).join("; ")}.`
         : "";
-      return `${countWord(n)} recorded votes connect ${name} to Ukraine aid, from ${formatDate(first)} to ${formatDate(last)}. ${countWord(yes.length)} are Yes votes, including ${yes[yes.length - 1]?.other.label.replace(/^Yes · /, "") ?? "the aid package"}.${noText}`;
+      return `${countWord(n)} Ukraine-related Senate roll calls in ${possessive(name)} record run from ${formatDate(first)} to ${formatDate(last)}. ${countWord(yea.length)} are Yea votes, the latest on ${yea[yea.length - 1]?.other.label.replace(/^Yea · /, "") ?? "the bill"}.${nayText}`;
     }
     case "Trips":
-      return `${possessive(name)} travel disclosures list ${n} trips: ${list(kids)}. Each trip links to its filing in the sources.`;
+      return `Delegation releases list ${name} on ${n === 1 ? "one trip" : `${n} trips`}: ${list(kids)}. Each trip links to its release in the sources.`;
+    case "Contacts":
+      return `A FARA registrant lists ${n === 1 ? "one contact entry" : `${countWord(n).toLowerCase()} contact entries`} with ${name} or his staff: ${list(kids)}. Each entry links to its filing row.`;
     case "Contributions": {
-      const total = kids.reduce((s, k) => s + money(k.other.label), 0);
-      return `${countWord(n)} itemized receipts to ${possessive(name)} campaign total $${total.toLocaleString("en-US")}: ${list(kids)}. These are reported contributions, not evidence of influence over a vote.`;
+      const gifts = edgesOf(cat.id)
+        .filter((x) => x.other.type === "org" && /^contributed/.test(x.edge.label))
+        .sort(byDate);
+      const total = gifts.reduce((s, g) => s + money(g.edge.label), 0);
+      return `FEC bulk data lists transfers to ${possessive(name)} campaign committee from ${countWord(gifts.length).toLowerCase()} PACs, $${total.toLocaleString("en-US")} in all: ${joinList(gifts.map((g) => `${g.other.label} ${g.edge.label.replace(/^contributed /, "")}`))}. These are reported contributions.`;
     }
-    case "Opinions":
-      return `${countWord(n)} public statements by ${name} appear here: ${list(kids)}. Together they support aid with transfer oversight.`;
+    case "Statements":
+      return `${countWord(n)} public statements by ${name} appear here: ${list(kids)}. Each one links to its source.`;
     case "Others":
-      return `${countWord(n)} other records complete the profile: ${list(kids)}.`;
+      return `${countWord(n)} other ${n === 1 ? "record completes" : "records complete"} the profile: ${list(kids)}.`;
     default:
       return `${countWord(n)} ${cat.label.toLowerCase()} records for ${name}: ${list(kids)}.`;
   }
@@ -81,63 +86,41 @@ function categoryAnswer(cat: Entity): string {
 
 function personAnswer(p: Entity): string {
   const rel = edgesOf(p.id).sort(byDate);
-  const head = `${p.label} (${p.sublabel ?? "member"})`;
   const parts: string[] = [];
-  const bills = rel.filter((r) => r.other.type === "bill");
-  for (const b of bills) {
-    const verb = /^sponsored/.test(b.edge.label) ? "sponsors" : "cosponsored";
-    const when = /^sponsored/.test(b.edge.label) ? "" : ` on ${formatDate(b.edge.date)}`;
-    parts.push(`${verb} ${b.other.label}${when}`);
+  for (const b of rel.filter((r) => r.other.type === "bill")) {
+    parts.push(/^sponsor/.test(b.edge.label) ? `sponsors ${shortLabel(b.other.id)}` : `is an original cosponsor of ${shortLabel(b.other.id)} (${formatDate(b.edge.date)})`);
   }
-  if (!parts.length) {
-    const org = rel.find((r) => /represents|works at/.test(r.edge.label));
-    const meeting = rel.find((r) => /attended/.test(r.edge.label));
-    let t = org ? `${p.label} ${org.edge.label} ${org.other.label}.` : `${p.label}, ${p.sublabel ?? "contact"}.`;
-    if (meeting) {
-      t += ` The visitor log places ${p.label} at the ${meeting.other.label.toLowerCase()} on ${formatDate(meeting.edge.date)}.`;
-    }
-    return t;
+  for (const t of rel.filter((r) => /listed on delegation/.test(r.edge.label))) {
+    parts.push(`is listed on the ${t.other.label} delegation`);
   }
-  let text = `${head} ${joinList(parts)}.`;
-  const gifts = rel.filter((r) => /^contributed/.test(r.edge.label));
-  if (gifts.length) {
-    text += ` FEC filings show ${joinList(
-      gifts.map((g) => `${g.other.label} PAC gave ${g.edge.label.replace(/^contributed /, "")}`),
-    )}.`;
+  let text = `${p.label} (${p.sublabel ?? "member"})${parts.length ? ` ${joinList(parts)}` : " appears in the records on this graph"}.`;
+  const contacts = rel.filter((r) => /contact with/.test(r.edge.label));
+  if (contacts.length) {
+    text += ` A FARA filing by Moran Global Strategies lists ${contacts.length === 1 ? "a contact" : "contacts"} with the senator for a Ukrainian ministry: ${joinList(contacts.map((c) => `“${c.other.label}” (${formatDate(c.edge.date)})`))}.`;
   }
-  const briefings = rel.filter((r) => /briefing/.test(r.edge.label));
-  for (const b of briefings) {
-    text += ` ${b.other.label} reports a policy briefing with the office on ${formatDate(b.edge.date)}.`;
-  }
+  const received = rel.filter((r) => /^received/.test(r.edge.label));
+  if (received.length) text += ` FEC bulk data lists ${joinList(received.map((r) => r.other.label))}.`;
   return text;
 }
 
 function orgAnswer(o: Entity): string {
   const rel = edgesOf(o.id).sort(byDate);
-  let text = `${o.label} is a ${(o.sublabel ?? "organization").toLowerCase()}.`;
+  let text = `${o.label}: ${o.sublabel ?? "organization"}.`;
   const gifts = rel.filter((r) => /^contributed/.test(r.edge.label));
   if (gifts.length) {
-    text += ` Its PAC reported ${joinList(
+    text += ` FEC bulk data lists ${joinList(
       gifts.map((g) => {
-        const to = g.other.type === "category" ? `${possessive(ownerName(g.other))} campaign` : g.other.label;
+        const to = g.other.type === "category" ? `${possessive(ownerName(g.other))} campaign committee` : g.other.label;
         return `${g.edge.label.replace(/^contributed /, "")} to ${to}`;
       }),
     )}.`;
   }
-  const people = rel.filter((r) => (r.other.type === "detail" || r.other.type === "person") && /represents|works at/.test(r.edge.label));
-  if (people.length) {
-    text += ` ${joinList(people.map((p) => p.other.label))} ${people.length > 1 ? "are" : "is"} listed with the ${
-      /lobby/i.test(o.sublabel ?? "") ? "firm" : "organization"
-    }.`;
+  const principal = rel.find((r) => /registered foreign principal/.test(r.edge.label));
+  if (principal) {
+    text += principal.other.id === o.id ? "" : ` FARA lists ${principal.other.label} as a foreign principal, registered ${formatDate(principal.edge.date)}.`;
   }
-  const meetings = rel.filter((r) => /briefed|briefing/.test(r.edge.label));
-  for (const m of meetings) {
-    text += ` It ${m.other.type === "person" ? `briefed ${m.other.label}’s office` : `appears in the ${m.other.label.toLowerCase()}`} on ${formatDate(m.edge.date)}.`;
-  }
-  const analysis = rel.filter((r) => /analysis/.test(r.edge.label));
-  for (const a of analysis) {
-    text += ` It published analysis on the ${a.other.label} on ${formatDate(a.edge.date)}.`;
-  }
+  const contacts = rel.filter((r) => /reported (contact|by registrant)/.test(r.edge.label));
+  if (contacts.length) text += ` Its FARA filing lists ${contacts.length} contact ${contacts.length === 1 ? "entry" : "entries"} on this graph.`;
   return text;
 }
 
@@ -160,17 +143,19 @@ function detailAnswer(d: Entity): string {
 function topicAnswer(t: Entity): string {
   const rel = edgesOf(t.id);
   const bills = rel.filter((r) => r.other.type === "bill").map((r) => r.other.label);
-  const orgs = rel.filter((r) => r.other.type === "org").map((r) => r.other.label);
-  let text = `${t.label} connects to ${bills.length} bills: ${joinList(bills)}.`;
-  if (orgs.length) text += ` ${joinList(orgs)} published analysis on the topic.`;
-  return text;
+  return `${t.label} connects to ${bills.length} bills: ${joinList(bills)}.`;
 }
 
 function billAnswer(b: Entity): string {
   const rel = edgesOf(b.id);
-  const sponsor = rel.find((r) => /^sponsored/.test(r.edge.label));
-  const co = rel.filter((r) => /^cosponsored/.test(r.edge.label));
-  return `${b.label}${sponsor ? ` is sponsored by ${sponsor.other.label}` : ""}, with ${co.length} cosponsors in the bill record.`;
+  const sponsor = rel.find((r) => /^sponsor/.test(r.edge.label));
+  const co = rel.filter((r) => /cosponsor/.test(r.edge.label));
+  const src = rel.flatMap((r) => r.edge.sourceIds).map((s) => catalog.sources[s]).find((s) => s?.kind === "CONGRESS");
+  let text = `${b.label} (${b.sublabel ?? "bill"}).`;
+  if (sponsor) text += ` The bill record lists ${sponsor.other.label} as sponsor.`;
+  if (co.length) text += ` It lists ${co.length} senators of this exploration as original cosponsors.`;
+  if (src) text += ` The entry comes from ${src.title}.`;
+  return text;
 }
 
 export function nodeAnswer(id: string): string {
@@ -220,7 +205,7 @@ function queryLabel(e: Entity): string {
     case "category":
       return `Query ${e.label.toLowerCase()} records`;
     case "org":
-      return "Query LDA and FEC filings";
+      return "Query FARA and FEC filings";
     case "person":
       return "Query public records";
     case "detail":
@@ -279,7 +264,7 @@ export function buildNoMatchTurn(): ScriptTurn {
     trigger: {},
     steps: [{ label: "Search the graph and public records", delta: { add: { entities: [], edges: [] } } }],
     answer:
-      "I could not find records for that question in this exploration. I can answer questions about the bills, members, meetings, and contributions shown here. Try one of these:",
+      "I could not find records for that question in this exploration. I can answer questions about the bills, senators, FARA contacts, trips, and contributions shown here. Try one of these:",
     citations: [],
     suggestions: [],
   };

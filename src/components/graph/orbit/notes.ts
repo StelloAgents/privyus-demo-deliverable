@@ -87,7 +87,7 @@ const mid = (a: number, b: number) => (a + b) / 2;
 
 export function resolveMarks(
   catalog: Catalog,
-  view: { focusId?: string; centerId?: string; nodes: ViewNode[]; byId: Map<string, ViewNode>; anchoredRings: Set<string> },
+  view: { focusId?: string; centerId?: string; nodes: ViewNode[]; byId: Map<string, ViewNode>; anchoredRings: Set<string>; window?: [number, number] },
   specs: GraphNoteSpec[],
 ): OrbitMarks {
   const out: OrbitMarks = { dial: [], marker: [], chips: [], emphasis: new Set(), named: new Set() };
@@ -168,7 +168,9 @@ export function resolveMarks(
   // Without a note that marks the dial: label the months of the records the answer is about
   // (the records at full strength on the rings), the first and the last.
   if (!dialDone) {
-    const days = ringRecords((n) => n.tier === "full").map((n) => n.day!);
+    // Records outside the clock window sit at its ends; the dial names the window's records only.
+    const w = view.window;
+    const days = ringRecords((n) => n.tier === "full" && (!w || (n.day! >= w[0] && n.day! < w[1]))).map((n) => n.day!);
     if (days.length) {
       const a = Math.min(...days);
       const b = Math.max(...days);

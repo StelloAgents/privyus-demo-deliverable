@@ -6,7 +6,7 @@ export type { VoteTally };
 
 export const VOTES: VoteTally[] = votes;
 
-/** "Cloture on S. 456 · Defense Support Act" into "Cloture on S. 456". */
+/** "Passage of H.R. 5334 · Senate roll call 224" into "Passage of H.R. 5334". */
 export function shortVoteLabel(label: string): string {
   return label.split(/\s+·\s+/)[0];
 }
@@ -46,35 +46,24 @@ export interface ChamberSeat {
 export const PARTY_NAME: Record<Party, string> = { R: "Republican", D: "Democrat", I: "Independent" };
 export const VOTE_NAME: Record<SeatVote, string> = { yes: "Yes", no: "No", nv: "Not voting" };
 
-const senateVote = votes.find((v) => v.chamber === "senate")!;
-const houseVote = votes.find((v) => v.chamber === "house")!;
-
-/** The Senate roll call, one seat per senator. */
+/** The Senate roll call, one seat per senator. Members of this exploration carry a memberId. */
 export const SENATE_SEATS: ChamberSeat[] = senateSeats.map((s) => ({
   id: s.seatId,
   state: s.state,
   party: s.party,
   vote: s.vote,
   memberId: s.memberId,
-  sponsor: s.memberId === senateVote.sponsorId,
 }));
 
-/** The House roll call, expanded from the per-state party counts. The sponsor sits in her state's party block. */
+/** The House roll call, expanded from the per-state party counts (members on the roll; seats with no member listed are not drawn). */
 export const HOUSE_SEATS: ChamberSeat[] = (() => {
   const out: ChamberSeat[] = [];
-  const sponsor = byId.get(houseVote.sponsorId);
-  const sponsorState = sponsor?.sublabel?.split("-")[1];
-  const sponsorParty = sponsor?.sublabel?.split("-")[0] as Party | undefined;
-  let sponsorPlaced = false;
   for (const st of houseStateVotes) {
-    for (const party of ["R", "D"] as const) {
+    for (const party of ["R", "D", "I"] as const) {
       const c = st.byParty[party];
+      if (!c) continue;
       for (const vote of ["yes", "no", "nv"] as const) {
-        for (let i = 0; i < c[vote]; i++) {
-          const isSponsor = !sponsorPlaced && vote === "yes" && party === sponsorParty && st.state === sponsorState;
-          if (isSponsor) sponsorPlaced = true;
-          out.push({ id: `${st.state}-${party}-${vote}-${i}`, state: st.state, party, vote, sponsor: isSponsor || undefined });
-        }
+        for (let i = 0; i < c[vote]; i++) out.push({ id: `${st.state}-${party}-${vote}-${i}`, state: st.state, party, vote });
       }
     }
   }

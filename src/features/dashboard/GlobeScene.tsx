@@ -136,7 +136,7 @@ interface FrameState {
 const EMPTY_PLACES: GlobePlace[] = [];
 
 /** Display names for the city labels. */
-const LABEL_NAME: Record<string, string> = { Washington: "Washington DC" };
+const LABEL_NAME: Record<string, string> = { Washington: "Washington DC", Ukraine: "Ukraine (principal\u2019s country)" };
 
 function applyColors(
   globe: ThreeGlobe,
@@ -357,10 +357,9 @@ const LABEL_SHIFT = {
 const LABEL_SIDE: Record<string, keyof typeof LABEL_SHIFT> = {
   // Arcs arrive from the west and above, so labels sit below or beside the points.
   Washington: "left",
-  Kyiv: "bottomRight",
-  Warsaw: "top",
-  Brussels: "bottomLeft",
-  Tallinn: "right",
+  Munich: "bottomLeft",
+  Vilnius: "top",
+  Ukraine: "bottomRight",
 };
 
 /**

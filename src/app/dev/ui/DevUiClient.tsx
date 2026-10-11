@@ -25,7 +25,7 @@ const SOURCE: SourceDoc = {
   kind: "FARA",
   title: "FARA supplemental statement #6843",
   date: "2026-05-02",
-  excerpt: "Registrant reports a meeting with the office of Sen. Ellen Hartley on security assistance for Ukraine.",
+  excerpt: "Registrant reports a meeting with the office of Sen. Member A on security assistance for Ukraine.",
 };
 
 /** Test page for the shared UI primitives (DESIGN.md section 4). */
@@ -44,13 +44,13 @@ export function DevUiClient() {
       <Panel title="Entity rows" subtitle="Chevron on hover only" action={<LiveChip />}>
         <div className="flex flex-col gap-2">
           {[
-            { i: "EH", t: "Sen. Ellen Hartley", s: "Voted yes on S. 456", m: "Today" },
-            { i: "IM", t: "Sen. Isabel Marquez", s: "Committee hearing", m: "Yesterday" },
+            { i: "MA", t: "Sen. Member A", s: "Voted yes on S. 0001", m: "Today" },
+            { i: "IM", t: "Sen. Member B", s: "Committee hearing", m: "Yesterday" },
           ].map((r, idx) => (
             <EntityRow key={r.t} style={fadeRiseStyle(idx)} leading={<Avatar initials={r.i} />} title={r.t} subtitle={r.s} meta={r.m} onClick={() => {}} />
           ))}
-          <EntityRow style={fadeRiseStyle(2)} leading={<IconRing icon={Plane} />} title="Travel filing: Kyiv" subtitle="Sen. Ellen Hartley" meta="Mar 2026" onClick={() => {}} />
-          <EntityRow style={fadeRiseStyle(3)} leading={<IconRing icon={FileText} />} title="H.R. 123" subtitle="Ukraine Aid Act" trailing={<Sparkline values={[3, 4, 4, 6, 5, 7, 8, 8, 10, 11, 12, 14]} highlightLast />} onClick={() => {}} />
+          <EntityRow style={fadeRiseStyle(2)} leading={<IconRing icon={Plane} />} title="Travel filing: Kyiv" subtitle="Sen. Member A" meta="Mar 2026" onClick={() => {}} />
+          <EntityRow style={fadeRiseStyle(3)} leading={<IconRing icon={FileText} />} title="H.R. 0002" subtitle="Sample House Bill" trailing={<Sparkline values={[3, 4, 4, 6, 5, 7, 8, 8, 10, 11, 12, 14]} highlightLast />} onClick={() => {}} />
           <EntityRow style={fadeRiseStyle(4)} variant="plain" leading={<IconRing icon={Vote} />} title="Roll call vote 214" subtitle="Plain variant, not clickable" meta="Sep 18" />
         </div>
       </Panel>
@@ -70,7 +70,7 @@ export function DevUiClient() {
           <ReasoningSteps complete thoughtSeconds={3} steps={[{ label: "Set root node", status: "done" }]} />
           <div className="flex flex-wrap gap-2">
             <SourceChip kind="FARA" label="FARA #6843" onClick={() => setSource(SOURCE)} />
-            <SourceChip kind="LDA" label="LDA Q1 2026" onClick={() => setSource({ ...SOURCE, kind: "LDA", title: "LDA Q1 2026 report: Meridian Public Affairs" })} />
+            <SourceChip kind="LDA" label="LDA Q1 2026" onClick={() => setSource({ ...SOURCE, kind: "LDA", title: "LDA Q1 2026 report: Sample Lobbying Firm" })} />
             <SourceChip kind="CONGRESS" label="congress.gov" />
           </div>
           <div className="flex flex-wrap gap-2">

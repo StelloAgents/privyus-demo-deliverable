@@ -12,6 +12,9 @@ import { ListDialog, ViewAllLink } from "./ListDialog";
 import { ago, useLive, useNow, type LiveKind, type LiveRow } from "./live";
 import styles from "./live.module.css";
 import { Reveal } from "./HomeGate";
+import { StatementRow } from "@/features/feeds/StatementRow";
+import { statementsFor } from "@/features/feeds/store";
+import type { PublicStatement } from "@/features/feeds/data";
 import { useFitCount } from "./useFitCount";
 
 const ICON: Record<LiveKind, LucideIcon> = {
@@ -35,10 +38,42 @@ const BASE_ROWS: LiveRow[] = dashboard.activity.map((a) => ({
   title: a.title,
   description: a.description,
   entityId: a.entityId,
+  sourceId: a.sourceId,
 }));
 
 /** The most rows the panel can hold at the largest size (the fit count never exceeds it). */
 const MAX_ROWS = 12;
+
+/** The panel shows at most this many public statements, so the records lead. "View all" shows every one, by date. */
+const PANEL_STATEMENTS_MAX = 2;
+
+/** Every public statement, newest first. */
+const STATEMENT_ITEMS = statementsFor();
+
+/** A feed entry: a public record, or a public statement (never a source). */
+type FeedItem = { type: "record"; row: LiveRow } | { type: "statement"; post: PublicStatement };
+
+/** Live arrivals stay on top. Below them, statements slot in by date among the fixture records (a statement on the same day sorts first). */
+function interleave(arrivals: LiveRow[], base: LiveRow[], posts: PublicStatement[]): FeedItem[] {
+  const out: FeedItem[] = arrivals.map((row) => ({ type: "record", row }));
+  let p = 0;
+  for (const row of base) {
+    while (p < posts.length && posts[p].date >= row.date.slice(0, 10)) out.push({ type: "statement", post: posts[p++] });
+    out.push({ type: "record", row });
+  }
+  while (p < posts.length) out.push({ type: "statement", post: posts[p++] });
+  return out;
+}
+
+/** The panel's top slot is always a public record: statements that sort above it move just below it. */
+function recordFirst(items: FeedItem[]): FeedItem[] {
+  const first = items.findIndex((i) => i.type === "record");
+  return first <= 0 ? items : [items[first], ...items.slice(0, first), ...items.slice(first + 1)];
+}
+
+function itemKey(item: FeedItem) {
+  return item.type === "record" ? item.row.id : `statement-${item.post.id}`;
+}
 
 function ActivityItem({ row, index, arriving, now }: { row: LiveRow; index: number; arriving?: boolean; now: number }) {
   const router = useRouter();
@@ -87,35 +122,48 @@ function ActivityItem({ row, index, arriving, now }: { row: LiveRow; index: numb
 export function ActivityFeed({ className }: { className?: string }) {
   const arrivals = useLive((s) => s.arrivals);
   const now = useNow();
-  const rows = useMemo(() => [...arrivals, ...BASE_ROWS], [arrivals]);
+  const items = useMemo(() => recordFirst(interleave(arrivals, BASE_ROWS, STATEMENT_ITEMS.slice(0, PANEL_STATEMENTS_MAX))), [arrivals]);
+  const allItems = useMemo(() => interleave(arrivals, BASE_ROWS, STATEMENT_ITEMS), [arrivals]);
   // Show only the rows that fit fully: no row is ever cut at the panel bottom.
   const { boxRef, listRef, count } = useFitCount<HTMLDivElement, HTMLUListElement>(MAX_ROWS, 2);
   const [showAll, setShowAll] = useState(false);
-  const shown = Math.min(count, rows.length);
+  const shown = Math.min(count, items.length);
   return (
     <Panel
       data-tour="activity"
       title="Activity"
       className={className}
-      action={<ViewAllLink count={rows.length} noun="activity records" onClick={() => setShowAll(true)} />}
+      action={<ViewAllLink count={arrivals.length + BASE_ROWS.length} noun="activity records" onClick={() => setShowAll(true)} />}
       bodyClassName="-mx-2 overflow-hidden px-2"
     >
       <Reveal shape="list" className="h-full">
       <div ref={boxRef} className="h-full">
         <ul ref={listRef} className="flex flex-col gap-0.5" aria-live="polite">
-          {rows.slice(0, shown).map((row, i) => (
-            // A `silent` record is put in place by a presenter step state: no arrival motion.
-            <ActivityItem key={row.id} row={row} index={i} arriving={row.arrivedAt !== undefined && !row.silent} now={now} />
-          ))}
+          {items.slice(0, shown).map((item, i) =>
+            item.type === "statement" ? (
+              <li key={itemKey(item)} style={fadeRiseStyle(i)}>
+                <StatementRow statement={item.post} />
+              </li>
+            ) : (
+              // A `silent` record is put in place by a presenter step state: no arrival motion.
+              <ActivityItem key={item.row.id} row={item.row} index={i} arriving={item.row.arrivedAt !== undefined && !item.row.silent} now={now} />
+            ),
+          )}
         </ul>
       </div>
       </Reveal>
       {showAll ? (
         <ListDialog title="Activity Feed" onClose={() => setShowAll(false)}>
           <ul className="-mx-2 flex flex-col gap-0.5">
-            {rows.map((row, i) => (
-              <ActivityItem key={row.id} row={row} index={i} now={now} />
-            ))}
+            {allItems.map((item, i) =>
+              item.type === "statement" ? (
+                <li key={itemKey(item)} style={fadeRiseStyle(i)}>
+                  <StatementRow statement={item.post} />
+                </li>
+              ) : (
+                <ActivityItem key={item.row.id} row={item.row} index={i} now={now} />
+              ),
+            )}
           </ul>
         </ListDialog>
       ) : null}
