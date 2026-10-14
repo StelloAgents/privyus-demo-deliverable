@@ -1,0 +1,164 @@
+/*
+ * Privyus design tokens (DESIGN.md sections 1 to 3).
+ * This is the only file that holds raw color values. Components use the
+ * variables below, or the Tailwind utilities mapped to them in globals.css.
+ */
+:root {
+  /* Color */
+  --bg: #101418;
+  --surface-1: #171c21;
+  --surface-2: #1e242a;
+  --surface-3: #262d34;
+  --border: #2a3239;
+  --border-strong: #3a444d;
+  --text-1: #f2f4f5;
+  --text-2: #adb7bd;
+  --text-3: #7d8990;
+  --teal: #598b97;
+  --teal-bright: #7fb6c2;
+  --orange: #f89b45;
+  /* Orange used as text (active nav, focus-path edge labels). Equals --orange in dark mode. */
+  --orange-ink: #f89b45;
+  --live: #2ec4b6;
+  --lavender: #8b7fd6;
+  --up: #3dd68c;
+  --down: #e5484d;
+  /* Party colors: encode party only (vote charts, maps). Data colors, not attention. */
+  --party-r: #c9514a;
+  --party-d: #4c7fd6;
+  --party-i: #8a86a8;
+
+  /* Derived (alpha) colors, built from the tokens above */
+  --teal-edge: rgb(89 139 151 / 0.55);
+  --teal-soft: rgb(89 139 151 / 0.14);
+  --orange-glow: rgb(248 155 69 / 0.35);
+  --orange-soft: rgb(248 155 69 / 0.12);
+  --lavender-soft: rgb(139 127 214 / 0.12);
+  --up-soft: rgb(61 214 140 / 0.12);
+  --down-soft: rgb(229 72 77 / 0.12);
+  --grid-dot: rgb(242 244 245 / 0.05);
+  --ghost: rgb(127 182 194 / 0.15);
+  --on-orange: #000000;
+  --label-halo: rgb(16 20 24 / 0.9);
+  --label-bg: rgb(16 20 24 / 0.88);
+
+  /* Graph (DESIGN.md sections 5 and 1b) */
+  --focus-glow: 0 0 24px rgb(248 155 69 / 0.35);
+  --graph-dim-opacity: 0.25;
+  --graph-ghost-opacity: 0.25;
+  --edge-opacity: 0.55;
+  --edge-label-bg: var(--surface-1);
+  --edge-label-border: var(--teal);
+  --edge-label-border-path: var(--orange);
+  --edge-label-text: var(--teal-bright);
+  --scrim: rgb(16 20 24 / 0.72);
+  /* Presenter mode dim layer */
+  --tour-dim: rgb(0 0 0 / 0.55);
+  /*
+   * Presenter guidance (caption, exit button, start hint). An inverted surface:
+   * it takes the other theme's tokens (light here), so it reads as an overlay
+   * and never as another app card. Accent: the teal brand edge.
+   */
+  --tour-caption-bg: #f6f8f9;
+  --tour-caption-title: #12171b;
+  --tour-caption-text: #4a565e;
+  --tour-caption-accent: #3f7482;
+  --tour-caption-shadow: 0 12px 32px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+
+  /* The one allowed flag (the root topic node) */
+  --flag-ua-blue: #0057b7;
+  --flag-ua-yellow: #ffd700;
+
+  /* Space scale (px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --panel-padding: 24px;
+  --panel-gap: 16px;
+
+  /* Shape */
+  --radius-panel: 6px;
+  --radius-card: 4px;
+  --radius-chip: 4px;
+  --radius-button: 4px;
+  /* Menus, dialogs, toasts, tooltips */
+  --radius-overlay: 6px;
+
+  /* Shell */
+  --topbar-height: 64px;
+  --footer-height: 36px;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-hover: 120ms;
+  --dur-dim: 200ms;
+  --dur-panel: 180ms;
+  --dur-edge: 280ms;
+  --dur-camera: 450ms;
+}
+
+/*
+ * Light mode (DESIGN.md section 1b). Only token values change.
+ * Set by data-theme="light" on <html>; dark is the default.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eef1f3;
+  --surface-1: #ffffff;
+  --surface-2: #f6f8f9;
+  --surface-3: #eceff2;
+  --border: #dce2e6;
+  --border-strong: #c3cdd4;
+  --text-1: #12171b;
+  --text-2: #4a565e;
+  --text-3: #6b7780;
+  --teal: #3f7482;
+  --teal-bright: #2c5f6c;
+  --orange: #f28a2e;
+  --orange-ink: #b45a12;
+  --live: #11968a;
+  --lavender: #6657c2;
+  --up: #1e9e62;
+  --down: #d23b40;
+  --party-r: #b5413a;
+  --party-d: #2f63bd;
+  --party-i: #77739a;
+
+  --teal-edge: rgb(63 116 130 / 0.45);
+  --teal-soft: rgb(63 116 130 / 0.1);
+  --orange-glow: rgb(242 138 46 / 0.22);
+  --orange-soft: rgb(242 138 46 / 0.12);
+  --lavender-soft: rgb(102 87 194 / 0.1);
+  --up-soft: rgb(30 158 98 / 0.12);
+  --down-soft: rgb(210 59 64 / 0.1);
+  --grid-dot: rgb(18 23 27 / 0.06);
+  --ghost: rgb(44 95 108 / 0.2);
+  --on-orange: #000000;
+  --label-halo: rgb(238 241 243 / 0.9);
+  --label-bg: rgb(238 241 243 / 0.9);
+
+  --focus-glow: 0 0 20px rgb(242 138 46 / 0.22);
+  --graph-dim-opacity: 0.3;
+  --graph-ghost-opacity: 0.3;
+  --edge-opacity: 0.45;
+  --edge-label-bg: rgb(255 255 255 / 0.92);
+  --edge-label-border: var(--border);
+  --edge-label-border-path: var(--border);
+  --edge-label-text: var(--teal-bright);
+  --scrim: rgb(238 241 243 / 0.72);
+  --tour-dim: rgb(16 20 24 / 0.35);
+  --tour-caption-bg: #1e242a;
+  --tour-caption-title: #f2f4f5;
+  --tour-caption-text: #adb7bd;
+  --tour-caption-accent: #598b97;
+  --tour-caption-shadow: 0 12px 32px rgb(16 20 24 / 0.22), 0 2px 6px rgb(16 20 24 / 0.16);
+}
+
+:root {
+  color-scheme: dark;
+}

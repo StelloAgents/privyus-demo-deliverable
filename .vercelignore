@@ -1,0 +1,8 @@
+.shots
+.next
+node_modules
+tsconfig.tsbuildinfo
+playwright-report
+test-results
+e2e
+.next-e2e
